@@ -1,0 +1,1016 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Gods Lies</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f4ecdc;
+    --bg-card: #fbf6ea;
+    --ink: #2b2320;
+    --ink-soft: #6b5d4f;
+    --border: #d8c9a8;
+    --accent: #a8621f;
+    --accent-soft: #e8d4b0;
+    --shadow: 0 1px 3px rgba(60, 40, 10, .08), 0 1px 2px rgba(60, 40, 10, .1);
+    --radius: 12px;
+    --glyph-filter: none;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #201a14;
+      --bg-card: #2a2219;
+      --ink: #ecdfc8;
+      --ink-soft: #b3a189;
+      --border: #4a3f30;
+      --accent: #d99a4e;
+      --accent-soft: #4a3a22;
+      --shadow: 0 1px 3px rgba(0, 0, 0, .3), 0 1px 2px rgba(0, 0, 0, .35);
+      --glyph-filter: invert(1) sepia(.15);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #201a14; --bg-card: #2a2219; --ink: #ecdfc8; --ink-soft: #b3a189;
+    --border: #4a3f30; --accent: #d99a4e; --accent-soft: #4a3a22;
+    --shadow: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.35);
+    --glyph-filter: invert(1) sepia(.15);
+  }
+  :root[data-theme="light"] {
+    --bg: #f4ecdc; --bg-card: #fbf6ea; --ink: #2b2320; --ink-soft: #6b5d4f;
+    --border: #d8c9a8; --accent: #a8621f; --accent-soft: #e8d4b0;
+    --shadow: 0 1px 3px rgba(60,40,10,.08), 0 1px 2px rgba(60,40,10,.1);
+    --glyph-filter: none;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+    background: var(--bg); color: var(--ink);
+    max-width: 1080px; margin: 0 auto; padding: 2.2rem 1.4rem 4rem;
+    line-height: 1.5;
+  }
+  h1 {
+    font-size: 2.1rem; margin: 0 0 .15rem; letter-spacing: .01em;
+    font-variant: small-caps;
+  }
+  .tagline { color: var(--ink-soft); margin: 0 0 1.4rem; font-size: 1.02rem; max-width: 62ch; }
+  h2 { font-size: 1.15rem; margin: 0 0 .3rem; font-variant: small-caps; letter-spacing: .02em; }
+  .hint { color: var(--ink-soft); font-size: .88rem; margin: 0 0 1rem; }
+  code, .mono { font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace; }
+
+  section.card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.4rem 1.5rem; margin-bottom: 1.4rem; box-shadow: var(--shadow);
+  }
+  .step-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--accent);
+    color: #fff8ec; font-size: .82rem; font-weight: 700; margin-right: .5rem;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+
+  label { display: block; margin: .5rem 0 .25rem; font-size: .85rem; color: var(--ink-soft); }
+  input[type=text], textarea {
+    width: 100%; box-sizing: border-box; padding: .55rem .7rem; font-size: .98rem;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+    color: var(--ink); font-family: inherit;
+  }
+  input[type=text]:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  textarea { min-height: 4rem; font-family: inherit; resize: vertical; }
+  textarea.mono { font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace; }
+
+  button {
+    font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 600; font-size: .9rem;
+    padding: .55rem 1.1rem; margin: .3rem .4rem 0 0; cursor: pointer;
+    border: 1px solid var(--accent); border-radius: 8px;
+    background: var(--accent); color: #fff8ec;
+    transition: filter .12s ease, transform .05s ease;
+  }
+  button:hover { filter: brightness(1.08); }
+  button:active { transform: translateY(1px); }
+  button.secondary { background: transparent; color: var(--ink); border-color: var(--border); }
+  button.secondary:hover { background: var(--accent-soft); }
+  button.small { font-size: .78rem; padding: .3rem .6rem; }
+  details > summary { cursor: pointer; color: var(--ink-soft); font-size: .85rem; margin: .6rem 0; }
+  details[open] > summary { margin-bottom: .9rem; }
+
+  .row { display: flex; gap: .8rem; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 170px; }
+
+  .field-row { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin: .6rem 0 .3rem; flex-wrap: wrap; }
+  .field-row label { margin: 0; }
+  .header-line { font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace; font-size: .85rem; color: var(--ink-soft); margin-top: .5rem; word-break: break-all; }
+
+  img.glyph, img.tile-preview { filter: var(--glyph-filter); }
+
+  /* --- tabs (Write / Read run independently, each with its own key) --- */
+  .tabbar { display: flex; gap: .4rem; margin-bottom: 1.4rem; border-bottom: 2px solid var(--border); }
+  .tabbtn {
+    background: transparent; color: var(--ink-soft); border: 1px solid transparent; border-bottom: none;
+    border-radius: 10px 10px 0 0; padding: .65rem 1.6rem; font-size: 1.05rem;
+    font-variant: small-caps; letter-spacing: .02em; margin: 0; box-shadow: none;
+  }
+  .tabbtn:hover { background: var(--accent-soft); filter: none; }
+  .tabbtn.active { background: var(--bg-card); color: var(--ink); border-color: var(--border); position: relative; top: 2px; }
+  .tabpanel { display: none; }
+  .tabpanel.active { display: block; }
+
+  /* --- slot picker summary strip --- */
+  .slot-summary { display: flex; gap: .7rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
+  .slot-chip {
+    flex: 1; min-width: 190px; border: 2px solid var(--border); border-radius: 10px;
+    padding: .7rem .9rem; display: flex; align-items: center; gap: .8rem;
+    background: var(--bg); cursor: pointer;
+    transition: border-color .12s ease, transform .1s ease, box-shadow .12s ease, background .12s ease;
+  }
+  .slot-chip.active { transform: translateY(-1px); box-shadow: 0 0 0 2px var(--accent); }
+  /* Filled chips are tinted in their own slot's color (matches the corner-tag/
+     dot colors below) so which slot holds what is legible at a glance, not
+     just "active vs not". */
+  .slot-chip.filled[data-target="g0"] { background: rgba(168,98,31,.16); border-color: #a8621f; }
+  .slot-chip.filled[data-target="g1"] { background: rgba(138,74,74,.16); border-color: #8a4a4a; }
+  .slot-chip.filled[data-target="d0"] { background: rgba(74,127,94,.16); border-color: #4a7f5e; }
+  .slot-chip.filled[data-target="d1"] { background: rgba(74,107,127,.16); border-color: #4a6b7f; }
+  .slot-chip .swatch {
+    width: 64px; height: 64px; border-radius: 8px; background: var(--bg-card);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
+  .slot-chip .swatch img { width: 50px; height: 50px; }
+  .slot-chip .meta { font-size: .78rem; line-height: 1.3; display: flex; flex-direction: column; }
+  .slot-chip .meta .label { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); }
+  .slot-chip .meta .name { font-weight: 700; font-size: 1.05rem; }
+  .slot-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: .35rem; }
+  .dot-g0 { background: #a8621f; } .dot-g1 { background: #8a4a4a; }
+  .dot-d0 { background: #4a7f5e; } .dot-d1 { background: #4a6b7f; }
+
+  /* --- gallery --- */
+  .gallery {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .9rem;
+  }
+  .classic-box {
+    border: 2px dashed var(--accent); border-radius: 12px; padding: 1rem;
+    margin-bottom: 1.2rem;
+  }
+  .classic-box .classic-label {
+    font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--accent); margin-bottom: .7rem; font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .classic-box .gallery { grid-template-columns: repeat(auto-fill, minmax(190px, 220px)); }
+  .name-card {
+    border: 2px solid var(--border); border-radius: 12px; padding: .75rem;
+    text-align: center; background: var(--bg); position: relative;
+    transition: border-color .12s ease;
+  }
+  .name-card .thumbs { display: flex; gap: .5rem; justify-content: center; }
+  .name-card .thumbs button {
+    all: unset; cursor: pointer; width: 100px; height: 100px; border-radius: 8px;
+    background: var(--bg-card); border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    transition: background .12s ease, border-color .12s ease;
+  }
+  .name-card .thumbs button:hover { border-color: var(--accent); }
+  /* "lit" = this specific thumbnail (not just the card as a whole) is the one
+     filling a slot -- background is set inline per-card in JS (solid tint for
+     one slot, a gradient when the same god fills both slots of one segment
+     type) so grid and diamond selections read exactly the same way. */
+  .name-card .thumbs button.lit { border-color: transparent; }
+  .name-card .thumbs img { width: 82px; height: 82px; }
+  .name-card .name { font-size: .92rem; margin-top: .5rem; font-weight: 700; }
+  .corner-tag {
+    position: absolute; width: 18px; height: 18px; border-radius: 4px;
+    display: none; align-items: center; justify-content: center;
+    font-size: .62rem; font-weight: 700; color: #fff8ec; font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .corner-tag.g0 { top: 5px; left: 5px; background: #a8621f; }
+  .corner-tag.g1 { top: 5px; right: 5px; background: #8a4a4a; }
+  .corner-tag.d0 { bottom: 5px; left: 5px; background: #4a7f5e; }
+  .corner-tag.d1 { bottom: 5px; right: 5px; background: #4a6b7f; }
+
+  /* --- code / chart strips (write result, alphabet chart) --- */
+  .chart-grid {
+    display: flex; flex-wrap: wrap; gap: 7px; border: 1px solid var(--border);
+    background: var(--bg); padding: 12px; border-radius: 10px; min-height: 3.5rem;
+  }
+  .chart-grid .cell {
+    width: 58px; height: 74px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 3px; background: var(--bg-card); border-radius: 6px; position: relative;
+  }
+  .chart-grid .cell .letter { font-size: .72rem; color: var(--ink-soft); font-weight: 700; }
+  .chart-grid img { max-width: 42px; max-height: 42px; }
+  .chart-grid .cell.clickable { cursor: pointer; }
+  .chart-grid .cell.clickable:hover { outline: 1px solid var(--accent); }
+  .chart-grid button.cell { border: none; background: var(--bg-card); font: inherit; color: inherit; padding: 0; }
+
+  /* --- write/read glyph streams: smaller, so a whole message is scannable at once --- */
+  .glyph-stream {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px; border: 1px solid var(--border);
+    background: var(--bg); padding: 10px; border-radius: 10px; min-height: 3rem;
+  }
+  .glyph-stream.editable { border-style: dashed; }
+  .glyph-stream .cell {
+    width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+    background: var(--bg-card); border-radius: 5px;
+  }
+  .glyph-stream img { max-width: 24px; max-height: 24px; }
+  .glyph-stream .lit { font-family: 'SF Mono', ui-monospace, monospace; font-size: .85rem; }
+  .glyph-stream .space { width: 18px; display: flex; align-items: center; justify-content: center; }
+  .glyph-stream .space::after { content: ""; width: 1px; height: 60%; background: var(--border); }
+  .glyph-stream button.cell { border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+  .glyph-stream button.cell:hover { outline: 1px solid #b23; }
+  .glyph-stream .empty-hint { color: var(--ink-soft); font-size: .85rem; padding: .4rem; }
+
+  .key-status {
+    display: block; font-size: .9rem; color: var(--ink-soft); margin-top: .6rem;
+    padding: .6rem .8rem; background: var(--bg); border-radius: 6px; border: 1px dashed var(--border);
+  }
+  .key-status.ready { color: var(--accent); border-style: solid; border-color: var(--accent-soft); }
+
+  footer { text-align: center; color: var(--ink-soft); font-size: .8rem; margin-top: 2.5rem; }
+</style>
+</head>
+<body>
+<h1>Gods Lies</h1>
+<p class="tagline">A pigpen cipher drawn from fourteen small gods, each with their own way of lying —
+mix any two grid-shaped ciphers with any two diamond-shaped ciphers into your own private alphabet,
+then write and read in symbols.</p>
+
+<div class="tabbar">
+  <button class="tabbtn active" data-tab="write">Write</button>
+  <button class="tabbtn" data-tab="read">Read</button>
+</div>
+
+<!-- ============================= WRITE ============================= -->
+<div class="tabpanel active" data-tab="write">
+
+  <div id="write-cipherRoot">
+  <section class="card">
+  <h2><span class="step-badge">1</span>Choose your cipher</h2>
+  <p class="hint">Click a slot below, then click a name's tile to fill it — filling one slot jumps you
+  to the next automatically (Grid&middot;1 → Grid&middot;2 → Diamond&middot;1 → Diamond&middot;2, then
+  stops). The colored corner on a tile shows every slot it's already filling. You can also click a slot
+  directly to target it, then click any name's tile to fill just that one. This key is used for
+  <strong>writing</strong> only — Read (other tab) has its own, so you can write and read with
+  different keys.</p>
+
+  <div class="slot-summary">
+    <div class="slot-chip active" data-target="g0"><span class="swatch"></span>
+      <span class="meta"><span class="label"><span class="slot-dot dot-g0"></span>Grid &middot; 1</span><span class="name">—</span></span></div>
+    <div class="slot-chip" data-target="g1"><span class="swatch"></span>
+      <span class="meta"><span class="label"><span class="slot-dot dot-g1"></span>Grid &middot; 2</span><span class="name">—</span></span></div>
+    <div class="slot-chip" data-target="d0"><span class="swatch"></span>
+      <span class="meta"><span class="label"><span class="slot-dot dot-d0"></span>Diamond &middot; 1</span><span class="name">—</span></span></div>
+    <div class="slot-chip" data-target="d1"><span class="swatch"></span>
+      <span class="meta"><span class="label"><span class="slot-dot dot-d1"></span>Diamond &middot; 2</span><span class="name">—</span></span></div>
+  </div>
+  <button class="secondary clear-selection-btn">Clear selection</button>
+
+  <div class="classic-box">
+    <div class="classic-label">Classic pigpen</div>
+    <div class="gallery classic-gallery"></div>
+  </div>
+
+  <div class="gallery other-gallery"></div>
+  </section>
+
+  <section class="card">
+  <h2><span class="step-badge">2</span>Your key</h2>
+  <p class="hint">Fills in automatically once all 4 slots above are chosen — this alphabet, seed, and
+  the download control below are all one thing: your key. Write below always uses whatever key is
+  currently set here.</p>
+  <div class="row">
+    <div>
+      <label>Seed (reuse it later to reproduce the same shuffle — also doubles as the message
+      header's seed word, see Write below)</label>
+      <input type="text" class="seed-input" placeholder="leave empty for a random alphabet" />
+    </div>
+  </div>
+  <div>
+    <button class="gen-btn">Regenerate with this seed</button>
+    <button class="secondary seed-word-btn">🎲 Suggest a word</button>
+    <button class="secondary download-key-btn">Download key</button>
+  </div>
+  <span class="key-status">No key yet — choose 4 styles above.</span>
+  <div class="chart-grid chart-glyphs" style="margin-top:.9rem;"></div>
+  </section>
+  </div>
+
+  <section class="card">
+  <h2><span class="step-badge">3</span>Write</h2>
+  <label for="write-plainText">Plaintext</label>
+  <textarea id="write-plainText" placeholder="Type a message..."></textarea>
+  <div class="row">
+    <div><label for="write-moodInput">Mood tag (optional)</label><input type="text" id="write-moodInput" placeholder=":c" /></div>
+    <div><label for="write-punctInput">Punctuation (optional)</label><input type="text" id="write-punctInput" placeholder="!" /></div>
+  </div>
+  <p class="hint">Mood and punctuation are folded into the message header below, alongside your key's
+  god-block codes and seed — nothing to compute by hand.</p>
+  <button id="write-encodeBtn">Encode</button>
+
+  <div class="field-row" style="margin-top:.9rem;">
+    <label style="margin:0;">Encoded result</label>
+    <button class="small secondary" id="write-copyGlyphsBtn">📋 Copy as codes</button>
+  </div>
+  <div class="glyph-stream" id="write-encodeGlyphs"></div>
+  <div class="header-line" id="write-headerLine"></div>
+
+  <details>
+    <summary>Show as text (header + codes — for pasting into Read, or anywhere else)</summary>
+    <div class="field-row" style="justify-content:flex-end;">
+      <button class="small secondary" id="write-copyFullBtn">📋 Copy</button>
+    </div>
+    <textarea id="write-fullTextOut" class="mono" readonly style="min-height:5rem;"></textarea>
+  </details>
+  </section>
+
+</div>
+
+<!-- ============================= READ ============================= -->
+<div class="tabpanel" data-tab="read">
+
+  <div id="read-cipherRoot">
+  <section class="card">
+  <h2><span class="step-badge">1</span>Choose your cipher</h2>
+  <p class="hint">Click a slot below, then click a name's tile to fill it — filling one slot jumps you
+  to the next automatically (Grid&middot;1 → Grid&middot;2 → Diamond&middot;1 → Diamond&middot;2, then
+  stops). The colored corner on a tile shows every slot it's already filling. This key is used for
+  <strong>reading</strong> only — Write (other tab) has its own. You don't have to fill this in at all
+  if you're only ever pasting messages that already carry their own header (see Read below).</p>
+
+  <div class="slot-summary">
+    <div class="slot-chip active" data-target="g0"><span class="swatch"></span>
+      <span class="meta"><span class="label"><span class="slot-dot dot-g0"></span>Grid &middot; 1</span><span class="name">—</span></span></div>
+    <div class="slot-chip" data-target="g1"><span class="swatch"></span>
+      <span class="meta"><span class="label"><span class="slot-dot dot-g1"></span>Grid &middot; 2</span><span class="name">—</span></span></div>
+    <div class="slot-chip" data-target="d0"><span class="swatch"></span>
+      <span class="meta"><span class="label"><span class="slot-dot dot-d0"></span>Diamond &middot; 1</span><span class="name">—</span></span></div>
+    <div class="slot-chip" data-target="d1"><span class="swatch"></span>
+      <span class="meta"><span class="label"><span class="slot-dot dot-d1"></span>Diamond &middot; 2</span><span class="name">—</span></span></div>
+  </div>
+  <button class="secondary clear-selection-btn">Clear selection</button>
+
+  <div class="classic-box">
+    <div class="classic-label">Classic pigpen</div>
+    <div class="gallery classic-gallery"></div>
+  </div>
+
+  <div class="gallery other-gallery"></div>
+  </section>
+
+  <section class="card">
+  <h2><span class="step-badge">2</span>Your key</h2>
+  <p class="hint">Fills in automatically once all 4 slots above are chosen. The alphabet chart below is
+  also how you decode: click each symbol you recognize, in order, to rebuild the message.</p>
+  <div class="row">
+    <div>
+      <label>Seed (reuse it later to reproduce the same shuffle)</label>
+      <input type="text" class="seed-input" placeholder="leave empty for a random alphabet" />
+    </div>
+  </div>
+  <div>
+    <button class="gen-btn">Regenerate with this seed</button>
+    <button class="secondary seed-word-btn">🎲 Suggest a word</button>
+    <button class="secondary download-key-btn">Download key</button>
+  </div>
+  <span class="key-status">No key yet — choose 4 styles above.</span>
+  <div class="chart-grid chart-glyphs" style="margin-top:.9rem;"></div>
+  </section>
+  </div>
+
+  <section class="card">
+  <h2><span class="step-badge">3</span>Read</h2>
+  <p class="hint">Click each symbol in the alphabet chart above (in "Your key") to rebuild the message,
+  in order — the chart already shows every symbol this key can produce. Use / for a space.</p>
+  <div class="row" style="margin-bottom:.3rem;">
+    <button class="small" id="read-spaceBtn">/ space</button>
+    <button class="small secondary" id="read-undoBtn">&larr; undo</button>
+    <button class="small secondary" id="read-clearSeqBtn">clear</button>
+  </div>
+  <div class="glyph-stream editable" id="read-sequenceStrip"><span class="empty-hint">Click symbols in the chart above to build the sequence — click a symbol here to remove it.</span></div>
+
+  <div class="field-row">
+    <label for="read-plainOut" style="margin:0;">Decoded text</label>
+    <button class="small secondary" id="read-copyPlainBtn">📋 Copy</button>
+  </div>
+  <textarea id="read-plainOut" readonly></textarea>
+
+  <details>
+    <summary>Paste a message to decode instead (header optional)</summary>
+    <p class="hint">Paste a coded message — with a <code>mood_slotA_slotB_seed_punctuation</code> header
+    line (its own god-block codes and seed rebuild the exact key needed, even if it's a different one
+    than what's selected above), or without a header at all (decoded using whichever key is set above
+    instead). Whether the header is there or not, this one box handles both.</p>
+    <textarea id="read-pasteIn" class="mono" placeholder="mood_slotA_slotB_seed_punctuation&#10;coded body&#10;#&#10;(header line is optional — omit it to decode with the key set above)"></textarea>
+    <button class="small secondary" id="read-pasteBtn">Decode</button>
+    <div class="hint" id="read-pasteMoodPunct"></div>
+    <div class="field-row">
+      <label style="margin:0;">Result</label>
+      <button class="small secondary" id="read-copyPasteBtn">📋 Copy</button>
+    </div>
+    <textarea id="read-pasteOut" readonly></textarea>
+  </details>
+  </section>
+
+</div>
+
+<footer>Gods Lies &mdash; fourteen small gods, one honest cipher.</footer>
+
+<script>
+// GENERATED by extract_assets.py -- do not hand-edit this block, it's overwritten on every extraction run.
+const FILL_MANIFEST = {"apate/diamond4_E":0.069,"apate/diamond4_N":0.138,"apate/diamond4_S":0.206,"apate/diamond4_W":0.206,"apate/grid9_1":0.675,"apate/grid9_2":0.675,"apate/grid9_3":0.688,"apate/grid9_4":0.675,"apate/grid9_5":0.688,"apate/grid9_6":0.688,"apate/grid9_7":0.675,"apate/grid9_8":0.688,"apate/grid9_9":0.688,"arnesis/diamond4_E":0.175,"arnesis/diamond4_N":0.181,"arnesis/diamond4_S":0.181,"arnesis/diamond4_W":0.181,"arnesis/grid9_1":0.631,"arnesis/grid9_2":0.538,"arnesis/grid9_3":0.631,"arnesis/grid9_4":0.538,"arnesis/grid9_5":0.631,"arnesis/grid9_6":0.538,"arnesis/grid9_7":0.631,"arnesis/grid9_8":0.538,"arnesis/grid9_9":0.631,"ate/diamond4_E":0.812,"ate/diamond4_N":0.812,"ate/diamond4_S":0.825,"ate/diamond4_W":0.819,"ate/grid9_1":0.769,"ate/grid9_2":0.856,"ate/grid9_3":0.769,"ate/grid9_4":0.875,"ate/grid9_5":0.875,"ate/grid9_6":0.875,"ate/grid9_7":0.762,"ate/grid9_8":0.869,"ate/grid9_9":0.762,"daidalos/diamond4_E":0.238,"daidalos/diamond4_N":0.231,"daidalos/diamond4_S":0.238,"daidalos/diamond4_W":0.231,"daidalos/grid9_1":0.675,"daidalos/grid9_2":0.681,"daidalos/grid9_3":0.669,"daidalos/grid9_4":0.688,"daidalos/grid9_5":0.462,"daidalos/grid9_6":0.662,"daidalos/grid9_7":0.662,"daidalos/grid9_8":0.675,"daidalos/grid9_9":0.65,"dolos/diamond4_E":0.231,"dolos/diamond4_N":0.231,"dolos/diamond4_S":0.238,"dolos/diamond4_W":0.231,"dolos/grid9_1":0.688,"dolos/grid9_2":0.681,"dolos/grid9_3":0.669,"dolos/grid9_4":0.7,"dolos/grid9_5":0.469,"dolos/grid9_6":0.681,"dolos/grid9_7":0.675,"dolos/grid9_8":0.688,"dolos/grid9_9":0.669,"hermes/diamond4_E":0.819,"hermes/diamond4_N":0.812,"hermes/diamond4_S":0.825,"hermes/diamond4_W":0.819,"hermes/grid9_1":0.781,"hermes/grid9_2":0.875,"hermes/grid9_3":0.781,"hermes/grid9_4":0.862,"hermes/grid9_5":0.875,"hermes/grid9_6":0.875,"hermes/grid9_7":0.775,"hermes/grid9_8":0.856,"hermes/grid9_9":0.762,"horkos/diamond4_E":0.225,"horkos/diamond4_N":0.231,"horkos/diamond4_S":0.225,"horkos/diamond4_W":0.225,"horkos/grid9_1":0.581,"horkos/grid9_2":0.688,"horkos/grid9_3":0.538,"horkos/grid9_4":0.688,"horkos/grid9_5":0.469,"horkos/grid9_6":0.675,"horkos/grid9_7":0.569,"horkos/grid9_8":0.688,"horkos/grid9_9":0.55,"kolax/diamond4_E":0.194,"kolax/diamond4_N":0.194,"kolax/diamond4_S":0.2,"kolax/diamond4_W":0.194,"kolax/grid9_1":0.662,"kolax/grid9_2":0.681,"kolax/grid9_3":0.681,"kolax/grid9_4":0.675,"kolax/grid9_5":0.525,"kolax/grid9_6":0.706,"kolax/grid9_7":0.675,"kolax/grid9_8":0.688,"kolax/grid9_9":0.694,"lethe/diamond4_E":0.256,"lethe/diamond4_N":0.256,"lethe/diamond4_S":0.256,"lethe/diamond4_W":0.256,"lethe/grid9_1":0.556,"lethe/grid9_2":0.556,"lethe/grid9_3":0.556,"lethe/grid9_4":0.556,"lethe/grid9_5":0.612,"lethe/grid9_6":0.556,"lethe/grid9_7":0.562,"lethe/grid9_8":0.562,"lethe/grid9_9":0.556,"limos/diamond4_E":0.262,"limos/diamond4_N":0.262,"limos/diamond4_S":0.262,"limos/diamond4_W":0.262,"limos/grid9_1":0.625,"limos/grid9_2":0.712,"limos/grid9_3":0.6,"limos/grid9_4":0.738,"limos/grid9_5":0.762,"limos/grid9_6":0.688,"limos/grid9_7":0.625,"limos/grid9_8":0.7,"limos/grid9_9":0.594,"lochos/diamond4_E":0.319,"lochos/diamond4_N":0.319,"lochos/diamond4_S":0.325,"lochos/diamond4_W":0.319,"lochos/grid9_1":0.538,"lochos/grid9_2":0.538,"lochos/grid9_3":0.531,"lochos/grid9_4":0.531,"lochos/grid9_5":0.612,"lochos/grid9_6":0.531,"lochos/grid9_7":0.538,"lochos/grid9_8":0.538,"lochos/grid9_9":0.531,"loxias/diamond4_E":0.194,"loxias/diamond4_N":0.194,"loxias/diamond4_S":0.194,"loxias/diamond4_W":0.194,"loxias/grid9_1":0.519,"loxias/grid9_2":0.581,"loxias/grid9_3":0.519,"loxias/grid9_4":0.581,"loxias/grid9_5":0.406,"loxias/grid9_6":0.588,"loxias/grid9_7":0.512,"loxias/grid9_8":0.588,"loxias/grid9_9":0.519,"mnemon/diamond4_E":0.25,"mnemon/diamond4_N":0.25,"mnemon/diamond4_S":0.25,"mnemon/diamond4_W":0.25,"mnemon/grid9_1":0.675,"mnemon/grid9_2":0.675,"mnemon/grid9_3":0.688,"mnemon/grid9_4":0.675,"mnemon/grid9_5":0.688,"mnemon/grid9_6":0.688,"mnemon/grid9_7":0.675,"mnemon/grid9_8":0.688,"mnemon/grid9_9":0.688,"phantasos/diamond4_E":0.319,"phantasos/diamond4_N":0.319,"phantasos/diamond4_S":0.325,"phantasos/diamond4_W":0.319,"phantasos/grid9_1":0.538,"phantasos/grid9_2":0.538,"phantasos/grid9_3":0.538,"phantasos/grid9_4":0.531,"phantasos/grid9_5":0.631,"phantasos/grid9_6":0.531,"phantasos/grid9_7":0.538,"phantasos/grid9_8":0.538,"phantasos/grid9_9":0.538};
+// END GENERATED
+
+// Real Greek/Greek-word deity names personifying a lie or deception,
+// matched to the visual style each one's real hand-drawn symbols evoke.
+// Hermès + Áte are shown in their own "classic pigpen" box, separate from
+// the other 12, so the tool presents with a familiar/recognizable look
+// before showing the exotic variants. List position has no bearing on
+// the key/slot mapping -- it's display order only.
+const CLASSIC_GODS = [["hermes", "Hermès"], ["ate", "Áte"]];
+const OTHER_GODS = [
+  ["horkos", "Hórkos"], ["arnesis", "Árnesis"], ["phantasos", "Phántasos"], ["dolos", "Dólos"],
+  ["apate", "Apáte"], ["kolax", "Kólax"],
+  ["lethe", "Léthe"], ["limos", "Limós"], ["lochos", "Lóchos"],
+  ["daidalos", "Daídalos"], ["mnemon", "Mnémon"], ["loxias", "Loxías"],
+];
+const GODS = [...CLASSIC_GODS, ...OTHER_GODS];
+const GOD_LABEL = Object.fromEntries(GODS);
+
+// Two-digit reference codes for the notebook message header (see README
+// "Message format"). Mirrors godslies.py's GOD_CODES exactly -- keep the
+// two in sync if this ever changes. First 9 are the real notebook's own
+// numbers (grid=N0, diamond=NN); the last 5 extend that "round" spirit
+// with digit-reversal pairs instead of the notebook's original plain
+// sequential tail.
+const GOD_CODES = {
+  hermes: ["10","11"], ate: ["20","22"], kolax: ["30","33"], loxias: ["40","44"],
+  apate: ["50","55"], mnemon: ["60","66"], dolos: ["70","77"], daidalos: ["80","88"],
+  phantasos: ["90","99"], lochos: ["15","51"], arnesis: ["25","52"], limos: ["35","53"],
+  horkos: ["45","54"], lethe: ["65","56"],
+};
+const CODE_TO_GOD = Object.fromEntries(
+  Object.entries(GOD_CODES).flatMap(([god, codes]) => codes.map(code => [code, god]))
+);
+
+function godRefCode(gridGod, diamondGod) {
+  if (gridGod === diamondGod) return GOD_CODES[gridGod][0];
+  return `${GOD_CODES[gridGod][0]}.${GOD_CODES[diamondGod][1]}`;
+}
+function parseGodRef(ref) {
+  if (ref.includes(".")) {
+    const [gridCode, diamondCode] = ref.split(".");
+    return [CODE_TO_GOD[gridCode], CODE_TO_GOD[diamondCode]];
+  }
+  const god = CODE_TO_GOD[ref];
+  return [god, god];
+}
+
+// Derive a full key straight from a message's own header -- no need for
+// the Read tab's own slots to match, or even be filled in at all.
+function keyFromHeader(slotA, slotB, seed) {
+  const [g0, d0] = parseGodRef(slotA);
+  const [g1, d1] = parseGodRef(slotB);
+  if (!g0 || !d0 || !g1 || !d1) throw new Error("unknown god-block code in header");
+  return generateKey([g0, g1], [d0, d1], seed);
+}
+
+const GRID9_POS = [1,2,3,4,5,6,7,8,9];
+const DIAMOND4_POS = ["N","E","S","W"];
+
+// Clamped/minimum-floor glyph scaling: boost a glyph that only fills a
+// small fraction of its 160x160 canvas toward a comfortable minimum
+// on-screen size, capped so it never grows to look as big as a full
+// glyph -- keeps the underlying assets untouched (their true relative
+// scale still matters, see extract_assets.py's clean_cell) while fixing
+// the "some symbols huge, some tiny" side-by-side look in the chart.
+//
+// Diamond4 arms need a much higher cap than grid9 cells do: most of
+// them are legitimately thin marks (a chevron, sometimes just a dot --
+// e.g. Apáte's E arm, or Áte's chevron-plus-dot) with far less native
+// ink than a full digit, so the old 1.8x cap left them looking tiny
+// next to their own god's grid9 style. 3.0x brings ordinary diamond
+// arms close to grid9's visual weight while still keeping an actual
+// dot recognizable as a dot, not blown up into a blob -- grid9 cells
+// almost never need more than ~1.4x anyway, so raising the shared cap
+// only changes diamonds in practice.
+const TARGET_FILL = 0.55;
+const MAX_BOOST = 3.0;
+
+function assetPath(name, seg, pos) { return `assets/${name}/${seg}_${pos}.png`; }
+function fillScale(name, seg, pos) {
+  const fill = FILL_MANIFEST[`${name}/${seg}_${pos}`];
+  if (!fill) return 1;
+  return Math.min(MAX_BOOST, Math.max(1, TARGET_FILL / fill));
+}
+
+function allSlots() {
+  const slots = [];
+  for (const which of [0,1]) for (const p of GRID9_POS) slots.push(["grid9", which, p]);
+  for (const which of [0,1]) for (const p of DIAMOND4_POS) slots.push(["diamond4", which, p]);
+  return slots;
+}
+const ALL_SLOTS = allSlots();
+const SLOT_ORDER = ["g0", "g1", "d0", "d1"];
+
+// One color per slot (matches the existing .dot-g0 etc. swatches) used to
+// colorize whichever gallery card/thumbnail is filling that slot -- solid
+// for borders, a softer alpha version for tinted button backgrounds.
+const SLOT_COLORS = { g0: "#a8621f", g1: "#8a4a4a", d0: "#4a7f5e", d1: "#4a6b7f" };
+const SLOT_TINTS = {
+  g0: "rgba(168,98,31,.22)", g1: "rgba(138,74,74,.22)",
+  d0: "rgba(74,127,94,.22)", d1: "rgba(74,107,127,.22)",
+};
+// A single slot's color/tint applies directly; 2+ (the same god filling more
+// than one slot -- e.g. a full godblock using one god for both its grid and
+// diamond) blend into a gradient instead of letting one plain color hide
+// that it's doing double duty.
+function blend(colors) {
+  if (colors.length === 0) return "";
+  if (colors.length === 1) return colors[0];
+  return `linear-gradient(135deg, ${colors.join(", ")})`;
+}
+
+function slotCode(seg, which, pos) { return (seg === "grid9" ? "G" : "D") + pos + (which ? "." : ""); }
+function parseCode(code) {
+  code = code.trim();
+  const which = code.endsWith(".") ? 1 : 0;
+  if (which) code = code.slice(0, -1);
+  const seg = code[0].toUpperCase() === "G" ? "grid9" : "diamond4";
+  const posStr = code.slice(1);
+  const pos = seg === "grid9" ? parseInt(posStr, 10) : posStr.toUpperCase();
+  return [seg, which, pos];
+}
+
+function seededRng(seedStr) {
+  let h = 1779033703 ^ seedStr.length;
+  for (let i = 0; i < seedStr.length; i++) {
+    h = Math.imul(h ^ seedStr.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return function () {
+    h = Math.imul(h ^ (h >>> 16), 2246822519);
+    h = Math.imul(h ^ (h >>> 13), 3266489917);
+    h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  };
+}
+
+function generateKey(grid9Names, diamond4Names, seed) {
+  seed = seed || String(Math.floor(Math.random() * 1e9));
+  const rng = seededRng(seed);
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  for (let i = letters.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [letters[i], letters[j]] = [letters[j], letters[i]];
+  }
+  const letter_to_slot = {};
+  letters.forEach((letter, i) => { letter_to_slot[letter] = ALL_SLOTS[i]; });
+  return { grid9_gods: grid9Names, diamond4_gods: diamond4Names, seed, letter_to_slot };
+}
+
+function nameFor(key, seg, which) {
+  return (seg === "grid9" ? key.grid9_gods : key.diamond4_gods)[which];
+}
+
+function encode(text, key) {
+  const tokens = [];
+  for (const ch of text) {
+    if (/[a-zA-Z]/.test(ch)) {
+      const slot = key.letter_to_slot[ch.toUpperCase()];
+      tokens.push(slotCode(slot[0], slot[1], slot[2]));
+    } else if (ch === " ") tokens.push("/");
+    else tokens.push(ch);
+  }
+  return tokens.join(" ");
+}
+
+function decode(codeString, key) {
+  const slotToLetter = {};
+  for (const [letter, [seg, which, pos]] of Object.entries(key.letter_to_slot)) {
+    slotToLetter[slotCode(seg, which, pos)] = letter;
+  }
+  return codeString.split(/\s+/).filter(Boolean).map(tok => {
+    if (tok === "/") return " ";
+    try {
+      const [seg, which, pos] = parseCode(tok);
+      return slotToLetter[slotCode(seg, which, pos)] ?? tok;
+    } catch { return tok; }
+  }).join("");
+}
+
+function glyphImg(seg, which, pos, key, cls = "glyph") {
+  const name = nameFor(key, seg, which);
+  const img = document.createElement("img");
+  img.className = cls;
+  img.src = assetPath(name, seg, pos);
+  img.alt = `${name} ${seg} ${pos}`;
+  img.title = `${GOD_LABEL[name] || name} — ${seg === "grid9" ? "cell " + pos : "arm " + pos}`;
+  const scale = fillScale(name, seg, pos);
+  if (scale > 1) img.style.transform = `scale(${scale.toFixed(2)})`;
+  return img;
+}
+
+// Shared renderer for both the encode result (read-only) and the decode
+// sequence being built (click-to-remove) -- smaller cells than the chart
+// so a full message stays scannable at a glance, with a thin divider
+// (not a blank gap) marking each word break.
+function renderGlyphStream(tokens, key, container, onRemove) {
+  container.innerHTML = "";
+  if (tokens.length === 0) {
+    container.innerHTML = onRemove
+      ? '<span class="empty-hint">Click symbols in the chart above to build the sequence — click a symbol here to remove it.</span>'
+      : '<span class="empty-hint">Nothing encoded yet.</span>';
+    return;
+  }
+  tokens.forEach((tok, i) => {
+    if (tok === "/") {
+      const sp = document.createElement("div");
+      sp.className = "space";
+      if (onRemove) { sp.style.cursor = "pointer"; sp.title = "click to remove"; sp.onclick = () => onRemove(i); }
+      container.appendChild(sp);
+      return;
+    }
+    const cell = document.createElement(onRemove ? "button" : "div");
+    cell.className = "cell";
+    if (/^[GD]/i.test(tok) && tok.length >= 2) {
+      try {
+        const [seg, which, pos] = parseCode(tok);
+        cell.appendChild(glyphImg(seg, which, pos, key));
+      } catch { cell.innerHTML = `<span class="lit">${tok}</span>`; }
+    } else {
+      cell.innerHTML = `<span class="lit">${tok}</span>`;
+    }
+    if (onRemove) { cell.title = "click to remove"; cell.onclick = () => onRemove(i); }
+    container.appendChild(cell);
+  });
+}
+
+// `onClick(seg, which, pos)`, when given, turns every cell into a button
+// that appends its symbol to a sequence being built -- used by Read so
+// the alphabet chart doubles as the decode input surface.
+function renderChart(key, container, onClick) {
+  container.innerHTML = "";
+  const letters = Object.keys(key.letter_to_slot).sort();
+  for (const letter of letters) {
+    const [seg, which, pos] = key.letter_to_slot[letter];
+    const cell = document.createElement(onClick ? "button" : "div");
+    cell.className = "cell" + (onClick ? " clickable" : "");
+    if (onClick) { cell.type = "button"; cell.title = `click to add ${letter}`; }
+    const label = document.createElement("div");
+    label.className = "letter";
+    label.textContent = letter;
+    cell.appendChild(label);
+    cell.appendChild(glyphImg(seg, which, pos, key));
+    if (onClick) cell.onclick = () => onClick(seg, which, pos);
+    container.appendChild(cell);
+  }
+}
+
+// A common-word/common-name pool for the seed suggester -- since the
+// seed word IS the real seed, a memorable word works just as well as a
+// random number and doubles as the message header's seed field for free.
+const SEED_WORDS = [
+  "Poutine", "Bagel", "Croissant", "Waffle", "Pretzel", "Biscuit", "Noodle", "Pancake",
+  "Falafel", "Dumpling", "Mango", "Papaya", "Coconut", "Cherry", "Apricot", "Walnut",
+  "Otter", "Badger", "Raven", "Falcon", "Panther", "Heron", "Weasel", "Lynx",
+  "Cobra", "Sparrow", "Beetle", "Gecko", "Marmot", "Wombat", "Pelican", "Ferret",
+  "Amber", "Crimson", "Cobalt", "Emerald", "Ivory", "Onyx", "Saffron", "Violet",
+  "Lantern", "Compass", "Anchor", "Beacon", "Ember", "Harbor", "Meadow", "Thicket",
+  "Quartz", "Granite", "Cinder", "Frost", "Thunder", "Comet", "Nebula", "Zephyr",
+  "Oscar", "Mila", "Theo", "Nadia", "Felix", "Ines", "Hugo", "Lena",
+  "Marcel", "Odile", "Gaston", "Yvette", "Remy", "Colette", "Basil", "Rosalind",
+  "Willow", "Cedar", "Birch", "Hazel", "Fennel", "Clover", "Poppy", "Juniper",
+];
+
+// --- copy-to-clipboard, with a file:// -safe fallback ---
+function copyViaExec(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch { ok = false; }
+  document.body.removeChild(ta);
+  return ok;
+}
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(text); return true; } catch { /* fall through */ }
+  }
+  return copyViaExec(text);
+}
+function wireCopy(btnId, getText) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  const original = btn.textContent;
+  btn.onclick = async () => {
+    const text = getText();
+    if (!text) { btn.textContent = "Nothing yet"; setTimeout(() => { btn.textContent = original; }, 1000); return; }
+    const ok = await copyText(text);
+    btn.textContent = ok ? "Copied!" : "Couldn't copy";
+    setTimeout(() => { btn.textContent = original; }, 1200);
+  };
+}
+
+// --- one self-contained cipher picker + key generator, instantiated once
+// for Write and once for Read so each can hold a different key. `ns` is
+// "write" or "read"; `root` wraps that instance's two "card" sections. ---
+function createCipherPanel(ns) {
+  const root = document.getElementById(`${ns}-cipherRoot`);
+  const slotSummary = root.querySelector(".slot-summary");
+  const classicGallery = root.querySelector(".classic-gallery");
+  const otherGallery = root.querySelector(".other-gallery");
+  const clearBtn = root.querySelector(".clear-selection-btn");
+  const seedInput = root.querySelector(".seed-input");
+  const genBtn = root.querySelector(".gen-btn");
+  const seedWordBtn = root.querySelector(".seed-word-btn");
+  const downloadBtn = root.querySelector(".download-key-btn");
+  const keyStatus = root.querySelector(".key-status");
+  const chartEl = root.querySelector(".chart-glyphs");
+
+  let target = "g0";
+  const selection = { g0: null, g1: null, d0: null, d1: null };
+  let currentKey = null;
+  let chartClickHandler = null;
+  let onKeyReadyCb = null;
+  let onClearCb = null;
+
+  function chipFor(slot) { return slotSummary.querySelector(`.slot-chip[data-target="${slot}"]`); }
+
+  // The slot a thumbnail click should land in when the active chip isn't
+  // already of the matching type: the first still-empty slot of that type,
+  // NOT a hardcoded index. Hardcoding (e.g. always "g0") would silently
+  // overwrite an already-filled g0 the moment the active chip drifted onto
+  // a diamond slot and the user then clicked a *second* grid thumbnail --
+  // exactly the "illogical order" bug this replaces.
+  function firstEmptySlotOfType(prefix) {
+    return SLOT_ORDER.find(s => s[0] === prefix && !selection[s])
+      || (prefix === "g" ? "g0" : "d0");
+  }
+
+  function setActiveChip(slot) {
+    target = slot;
+    slotSummary.querySelectorAll(".slot-chip").forEach(c => c.classList.toggle("active", c.dataset.target === slot));
+  }
+  slotSummary.querySelectorAll(".slot-chip").forEach(chip => {
+    chip.onclick = () => setActiveChip(chip.dataset.target);
+  });
+
+  function advanceToNextEmptySlot(justFilled) {
+    const order = SLOT_ORDER.slice(SLOT_ORDER.indexOf(justFilled) + 1).concat(SLOT_ORDER);
+    const next = order.find(s => !selection[s]);
+    if (next) setActiveChip(next);
+  }
+
+  function buildGalleryInto(container, gods) {
+    container.innerHTML = "";
+    for (const [id, label] of gods) {
+      const card = document.createElement("div");
+      card.className = "name-card";
+      card.dataset.name = id;
+      card.innerHTML = `
+        <span class="corner-tag g0">G1</span><span class="corner-tag g1">G2</span>
+        <span class="corner-tag d0">D1</span><span class="corner-tag d1">D2</span>
+        <div class="thumbs">
+          <button class="g9" title="grid style"><img src="${assetPath(id,'grid9','tile')}"></button>
+          <button class="d4" title="diamond style"><img src="${assetPath(id,'diamond4','tile')}"></button>
+        </div>
+        <div class="name">${label}</div>
+      `;
+      card.querySelector(".g9").onclick = () => assign(target.startsWith("g") ? target : firstEmptySlotOfType("g"), id);
+      card.querySelector(".d4").onclick = () => assign(target.startsWith("d") ? target : firstEmptySlotOfType("d"), id);
+      container.appendChild(card);
+    }
+  }
+
+  function refreshUI() {
+    const cards = [...classicGallery.children, ...otherGallery.children];
+    cards.forEach(card => {
+      const id = card.dataset.name;
+      card.querySelectorAll(".corner-tag").forEach(t => t.style.display = "none");
+      const cardColors = [];
+      for (const [slot, name] of Object.entries(selection)) {
+        if (name === id) {
+          cardColors.push(SLOT_COLORS[slot]);
+          card.querySelector(`.corner-tag.${slot}`).style.display = "flex";
+        }
+      }
+      // Whole-card border: solid if this god fills exactly one slot, a
+      // gradient blend if it fills more (see blend() above).
+      if (cardColors.length === 0) {
+        card.style.borderColor = "";
+        card.style.borderImage = "";
+      } else if (cardColors.length === 1) {
+        card.style.borderImage = "";
+        card.style.borderColor = cardColors[0];
+      } else {
+        card.style.borderColor = "";
+        card.style.borderImage = `${blend(cardColors)} 1`;
+      }
+      // Per-thumbnail "lit" tint: grid and diamond each highlighted
+      // independently based on which of *their own* two slots (if any)
+      // this god is currently filling.
+      const gTints = SLOT_ORDER.filter(s => s[0] === "g" && selection[s] === id).map(s => SLOT_TINTS[s]);
+      const dTints = SLOT_ORDER.filter(s => s[0] === "d" && selection[s] === id).map(s => SLOT_TINTS[s]);
+      const g9btn = card.querySelector(".g9");
+      const d4btn = card.querySelector(".d4");
+      g9btn.classList.toggle("lit", gTints.length > 0);
+      g9btn.style.background = gTints.length ? blend(gTints) : "";
+      d4btn.classList.toggle("lit", dTints.length > 0);
+      d4btn.style.background = dTints.length ? blend(dTints) : "";
+    });
+    for (const slot of SLOT_ORDER) {
+      const name = selection[slot];
+      const seg = slot[0] === "g" ? "grid9" : "diamond4";
+      const chip = chipFor(slot);
+      const swatch = chip.querySelector(".swatch");
+      const nameEl = chip.querySelector(".name");
+      if (name) {
+        swatch.innerHTML = `<img src="${assetPath(name, seg, 'tile')}">`;
+        nameEl.textContent = GOD_LABEL[name] || name;
+      } else {
+        swatch.innerHTML = "";
+        nameEl.textContent = "—";
+      }
+    }
+  }
+
+  function assign(slot, name) {
+    selection[slot] = name;
+    chipFor(slot).classList.add("filled");
+    refreshUI();
+    advanceToNextEmptySlot(slot);
+    maybeAutoGenerate();
+  }
+
+  function setKey(key) {
+    currentKey = key;
+    keyStatus.classList.add("ready");
+    const g = key.grid9_gods.map(n => GOD_LABEL[n] || n).join(" + ");
+    const d = key.diamond4_gods.map(n => GOD_LABEL[n] || n).join(" + ");
+    keyStatus.textContent = `Key ready — grid: ${g} · diamond: ${d} · seed "${key.seed}"`;
+    renderChart(currentKey, chartEl, chartClickHandler);
+    if (onKeyReadyCb) onKeyReadyCb(currentKey);
+  }
+
+  function maybeAutoGenerate() {
+    if (selection.g0 && selection.g1 && selection.d0 && selection.d1) {
+      const seed = seedInput.value.trim();
+      setKey(generateKey([selection.g0, selection.g1], [selection.d0, selection.d1], seed || null));
+    }
+  }
+
+  genBtn.onclick = () => {
+    if (!selection.g0 || !selection.g1 || !selection.d0 || !selection.d1) {
+      alert("Choose a name for all 4 slots first (2 grid, 2 diamond) above.");
+      return;
+    }
+    const seed = seedInput.value.trim();
+    setKey(generateKey([selection.g0, selection.g1], [selection.d0, selection.d1], seed || null));
+  };
+
+  seedWordBtn.onclick = () => {
+    const word = SEED_WORDS[Math.floor(Math.random() * SEED_WORDS.length)];
+    seedInput.value = word;
+    if (selection.g0 && selection.g1 && selection.d0 && selection.d1) {
+      setKey(generateKey([selection.g0, selection.g1], [selection.d0, selection.d1], word));
+    }
+  };
+
+  downloadBtn.onclick = () => {
+    if (!currentKey) { alert("Generate a key first."); return; }
+    const blob = new Blob([JSON.stringify(currentKey, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `gods-lies-key-${currentKey.seed}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  clearBtn.onclick = () => {
+    for (const slot of SLOT_ORDER) selection[slot] = null;
+    slotSummary.querySelectorAll(".slot-chip").forEach(c => c.classList.remove("filled"));
+    currentKey = null;
+    keyStatus.classList.remove("ready");
+    keyStatus.textContent = "No key yet — choose 4 styles above.";
+    chartEl.innerHTML = "";
+    setActiveChip("g0");
+    refreshUI();
+    if (onClearCb) onClearCb();
+  };
+
+  buildGalleryInto(classicGallery, CLASSIC_GODS);
+  buildGalleryInto(otherGallery, OTHER_GODS);
+  refreshUI();
+
+  return {
+    getKey: () => currentKey,
+    setChartClickHandler(fn) { chartClickHandler = fn; },
+    onKeyReady(fn) { onKeyReadyCb = fn; },
+    onClear(fn) { onClearCb = fn; },
+  };
+}
+
+const writeCipher = createCipherPanel("write");
+const readCipher = createCipherPanel("read");
+
+// --- Write ---
+let lastWriteCoded = "";
+let lastWriteFull = "";
+
+document.getElementById("write-encodeBtn").onclick = () => {
+  const key = writeCipher.getKey();
+  if (!key) { alert("Choose all 4 styles first (Choose your cipher, above)."); return; }
+  const coded = encode(document.getElementById("write-plainText").value, key);
+  lastWriteCoded = coded;
+  renderGlyphStream(coded.split(/\s+/).filter(Boolean), key, document.getElementById("write-encodeGlyphs"));
+
+  const slotA = godRefCode(key.grid9_gods[0], key.diamond4_gods[0]);
+  const slotB = godRefCode(key.grid9_gods[1], key.diamond4_gods[1]);
+  const mood = document.getElementById("write-moodInput").value;
+  const punct = document.getElementById("write-punctInput").value;
+  const header = `${mood}_${slotA}_${slotB}_${key.seed}_${punct}`;
+  lastWriteFull = `${header}\n${coded}\n#`;
+  document.getElementById("write-headerLine").textContent = `Header → ${header}`;
+  document.getElementById("write-fullTextOut").value = lastWriteFull;
+};
+
+wireCopy("write-copyGlyphsBtn", () => lastWriteCoded);
+wireCopy("write-copyFullBtn", () => lastWriteFull);
+
+// --- Read: the alphabet chart above (in "Your key") is the click-to-build
+// decode surface -- clicking a symbol there appends it to the sequence. ---
+let readDecodeSeq = [];
+
+function renderReadSequence() {
+  const key = readCipher.getKey();
+  renderGlyphStream(readDecodeSeq, key, document.getElementById("read-sequenceStrip"), (i) => {
+    readDecodeSeq.splice(i, 1);
+    renderReadSequence();
+  });
+  document.getElementById("read-plainOut").value = key ? decode(readDecodeSeq.join(" "), key) : "";
+}
+
+readCipher.setChartClickHandler((seg, which, pos) => {
+  readDecodeSeq.push(slotCode(seg, which, pos));
+  renderReadSequence();
+});
+readCipher.onKeyReady(() => renderReadSequence());
+readCipher.onClear(() => { readDecodeSeq = []; renderReadSequence(); });
+
+document.getElementById("read-spaceBtn").onclick = () => { readDecodeSeq.push("/"); renderReadSequence(); };
+document.getElementById("read-undoBtn").onclick = () => { readDecodeSeq.pop(); renderReadSequence(); };
+document.getElementById("read-clearSeqBtn").onclick = () => { readDecodeSeq = []; renderReadSequence(); };
+
+wireCopy("read-copyPlainBtn", () => document.getElementById("read-plainOut").value);
+
+// --- Read: one paste box, header optional. If the first line parses as a
+// mood_slotA_slotB_seed_punctuation header, its own codes rebuild the key
+// (even a different one than what's selected above); otherwise the whole
+// paste is treated as coded body and decoded with the key selected above. ---
+document.getElementById("read-pasteBtn").onclick = () => {
+  const raw = document.getElementById("read-pasteIn").value;
+  const lines = raw.split("\n").map(l => l.trim()).filter(l => l && l !== "#");
+  if (!lines.length) { alert("Paste a coded message first."); return; }
+
+  const headerParts = lines[0].split("_");
+  let mood = "", slotA = "", slotB = "", seed = "", punct = "", key = null, body = "";
+  const looksLikeHeader = headerParts.length === 5
+    && parseGodRef(headerParts[1])[0] && parseGodRef(headerParts[2])[0];
+
+  if (looksLikeHeader) {
+    [mood, slotA, slotB, seed, punct] = headerParts;
+    try {
+      key = keyFromHeader(slotA, slotB, seed);
+    } catch (e) {
+      document.getElementById("read-pasteOut").value = `Couldn't derive a key from that header: ${e.message}`;
+      document.getElementById("read-pasteMoodPunct").textContent = "";
+      return;
+    }
+    body = lines.slice(1).join(" ");
+  } else {
+    key = readCipher.getKey();
+    if (!key) {
+      alert("No header found in that text, and no key chosen above — pick your 4 styles first, or paste a message that includes its own header.");
+      return;
+    }
+    body = lines.join(" ");
+  }
+
+  document.getElementById("read-pasteOut").value = decode(body, key);
+  document.getElementById("read-pasteMoodPunct").textContent =
+    (mood || punct) ? `Mood: ${mood || "—"}   ·   Punctuation: ${punct || "—"}` : "";
+};
+
+wireCopy("read-copyPasteBtn", () => document.getElementById("read-pasteOut").value);
+
+// --- tabs ---
+document.querySelectorAll(".tabbtn").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".tabbtn").forEach(b => b.classList.toggle("active", b === btn));
+    document.querySelectorAll(".tabpanel").forEach(p => p.classList.toggle("active", p.dataset.tab === btn.dataset.tab));
+  };
+});
+</script>
+</body>
+</html>

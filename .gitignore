@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+
+# Generated keys are private by design -- see README's "Keep these safe" note.
+keys/*.json
