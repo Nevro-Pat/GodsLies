@@ -225,13 +225,26 @@
   .separator { width: min(320px, 90%); height: 2px; background: var(--border); }
 
   @media (min-width: 1240px) {
-    .godblock-row {
-      flex-direction: row;
-      width: fit-content; max-width: 1140px; margin-left: auto; margin-right: auto;
-    }
+    /* No max-width/centering on the row itself -- that capped it to its
+       natural content width and centered the whole cluster, which just
+       relocated the old bug into a smaller but still-visible blank margin
+       on BOTH sides once the card was wider than that cap. Instead the
+       row fills the card's full width, .slot-boxes anchors its true left
+       edge (default flex-start), and margin-left:auto on the Clear button
+       (below) absorbs all the leftover space in one spot, pushing
+       Clear+separator+classic-col as a group flush to the row's true
+       right edge -- classic pigpen genuinely on the right, not floating
+       centered with padding on both outer sides. Safe from the original
+       margin-left:auto bug (see .classic-col, below) because this
+       media query only ever applies once .godblock-row is a single
+       non-wrapping line (flex-wrap is never set to wrap anywhere in this
+       rule) -- there's no "wrapped onto its own line" state left for an
+       auto-margin to misbehave in. */
+    .godblock-row { flex-direction: row; }
     .godblock-row > .clear-selection-btn {
       writing-mode: vertical-rl; align-self: stretch;
       padding: .5rem .4rem; font-size: .78rem; letter-spacing: .03em;
+      margin-left: auto;
     }
     .separator { width: 2px; height: auto; align-self: stretch; }
   }
@@ -239,12 +252,14 @@
      left over, so its width (and card sizes) silently depended on how
      wide the Clear button's translated label happened to render. Always
      holds exactly 2 cards, so a fixed track size keeps it identical
-     regardless of language. No margin-left:auto -- that used to pin it to
-     the row's right edge, but that meant a growing blank gap before it on
-     wide screens, and an even worse blank gap under the slot-boxes when it
-     wrapped onto its own line alone (auto-margin still pushed it right on
-     that line too). .godblock-row's own max-width+centering (above) is
-     what keeps the row looking intentional now, not a per-child pin. */
+     regardless of language. No margin-left:auto here anymore -- it used
+     to pin *this* element to the row's right edge, which broke the
+     instant this wrapped onto its own line alone (auto-margin still
+     pushed it right on that line too, stranding a blank gap under the
+     slot-boxes). The same "push everything after me to the right edge"
+     job is now done once, safely, by .clear-selection-btn's own
+     margin-left:auto in the min-width:1240px block above -- see the
+     comment there for why it's safe now (row-mode never wraps). */
   .classic-col { flex: 0 0 auto; max-width: 100%; }
   .classic-col .classic-label {
     font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
@@ -637,7 +652,7 @@ const STRINGS = {
     encoded_result_label: "Encoded result",
     copy_codes_btn: "📋 Copy as codes",
     copy_font_text_btn: "🔒 Copy cipher text",
-    font_text_hint: "Paste into a document using your downloaded font — unreadable without it, even if copied elsewhere.",
+    font_text_hint: "Works where you can pick a custom font (Notepad++, Word…) — most chat apps and websites can't display it. Use Copy image for those.",
     copy_image_btn: "🖼 Copy image",
     download_image_btn: "⬇ Download image",
     copy_image_unsupported: "Not supported here — downloading instead",
@@ -732,7 +747,7 @@ const STRINGS = {
     encoded_result_label: "Résultat chiffré",
     copy_codes_btn: "📋 Copier en codes",
     copy_font_text_btn: "🔒 Copier le texte chiffré",
-    font_text_hint: "Collez dans un document utilisant votre police téléchargée — illisible sans elle, même copié ailleurs.",
+    font_text_hint: "Fonctionne là où vous pouvez choisir une police personnalisée (Notepad++, Word…) — la plupart des messageries et sites web ne peuvent pas l'afficher. Utilisez Copier l'image pour ceux-là.",
     copy_image_btn: "🖼 Copier l'image",
     download_image_btn: "⬇ Télécharger l'image",
     copy_image_unsupported: "Non pris en charge ici — téléchargement à la place",
