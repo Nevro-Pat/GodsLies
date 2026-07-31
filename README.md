@@ -118,19 +118,21 @@ cell/arm image is shown (chart, write/read results).
 - `assets/manifest.json` — each cell's content-fill fraction, used for
   clamped glyph sizing (see above)
 - `godslies.py` — CLI / importable Python library
-- `godslies.html` — browser version, two tabs: **Write** and **Read**.
-  Each tab is fully self-contained — its own gallery + slot picker
-  (Hermès/Áte set apart in their own "classic pigpen" box), its own
-  seed/key management, and its own live alphabet chart — so you can write
-  under one key and read under a completely different one without either
-  tab clobbering the other. Write encodes plaintext (mood/punctuation are
-  plain optional fields next to it) straight to symbols, with the
-  full text version (header + codes) tucked behind a "Show as text"
-  arrow for copy-pasting elsewhere. Read's alphabet chart doubles as the
-  decode input — click each symbol you recognize, in order — or paste a
-  whole message to decode instead (its header, if present, is optional:
-  with one, its own god-block codes and seed rebuild the key on the spot;
-  without one, the key selected above is used instead)
+- `godslies.html` — browser version. One shared gallery + slot picker
+  (Hermès/Áte set apart in their own "classic pigpen" column) and one
+  live alphabet chart/key, used by both **Write** and **Read** below it
+  (small tabs, not separate keys). Write encodes plaintext
+  (mood/punctuation are plain optional fields next to it) straight to
+  symbols, with the full text version (header + codes) tucked behind a
+  "Show as text" arrow for copy-pasting elsewhere. Read's alphabet chart
+  doubles as the decode input — click each symbol you recognize, in
+  order — or paste a whole message to decode instead (its header, if
+  present, is optional: with one, its own god-block codes and seed
+  rebuild the key on the spot; without one, the key selected above is
+  used instead)
+- `make_font.py` — builds a real, installable Windows `.ttf` font from a
+  key file: type normally in any app and see the cipher symbols instead
+  of A-Z. See "Custom font" below.
 - `keys/` — generated alphabet keys, saved as JSON. **Keep these safe** —
   losing a key means anything encoded with it can't be decoded again.
 
@@ -146,36 +148,57 @@ any SVG written by the CLI — keep it under this project folder (e.g. in
 ## Browser usage
 
 Open `godslies.html` directly in a browser (fully offline, no server
-needed). There are two tabs, **Write** and **Read**, each with its own
-picker and key — filling one never touches the other, so you can write
-with one key and read with a different one.
+needed). One cipher + key setup is shared by both **Write** and **Read**
+(small tabs near the bottom, not separate keys).
 
-In either tab: pick which of the 4 slots you're filling, click a name's
-grid9 or diamond4 thumbnail to fill it (tiles are large enough to read
-directly — filling one slot jumps you to the next: Grid·1 → Grid·2 →
-Diamond·1 → Diamond·2, then stops; "Clear selection" resets all 4 to
-start over, without affecting the other tab). Then set an optional seed
-(🎲 suggests a common word/name — since the seed word doubles as the
-message header's seed, a memorable one is just as good as a random
-number) and/or download the key. Once all 4 slots are filled, that tab's
-alphabet chart fills in automatically.
+Click any name's grid or diamond tile to fill the next open slot (Block
+A's grid/diamond, then Block B's) — grid and diamond fill independently,
+and once both of a type are full, clicking again replaces the first,
+then the second, and so on, so there's never a need to target a slot
+first. "Clear" resets all 4. Then set an optional seed (🎲 suggests a
+common word/name — since the seed word doubles as the message header's
+seed, a memorable one is just as good as a random number) and/or
+download the key. Once all 4 slots are filled, the alphabet chart fills
+in automatically. Accented letters (é, ç, ñ, ...) and common ligatures
+(œ, æ, ß, ø) fold to their base letter before encoding — decoding a
+message back returns the base letter, not the original accent.
 
 **Write**: type plaintext, optionally set a mood tag/punctuation right
-below it, and hit Encode — the result shows as symbols, with a copy
-button next to it (copies the plain code text, since images can't be
-pasted as text elsewhere). The full message (header + codes) sits behind
-a "Show as text" arrow, also with its own copy button, for pasting into
-Read or anywhere else.
+below it, and hit Encode — the result shows as symbols (mood and
+punctuation framed at each end), with a copy button next to it (copies
+the plain code text, since images can't be pasted as text elsewhere).
+The full message (header + codes) sits behind a "Show as text" arrow,
+also with its own copy button, for pasting into Read or anywhere else.
 
-**Read**: its alphabet chart (in "Your key") is the decode input —
-click each symbol you recognize there, in order, to rebuild the message
-(shown live below, with a copy button); "/ space", undo and clear help
-manage the sequence. Or expand "Paste a message to decode instead":
-one box handles a message with or without its own header — with one, its
-own god-block codes and seed rebuild the exact key needed (even a
-different one than what's selected above, and its mood/punctuation are
-shown alongside the decoded text); without one, whatever's selected above
-is used instead.
+**Read**: the alphabet chart (in "Your key") is the decode input — click
+each symbol you recognize there, in order, to rebuild the message (shown
+live below, with a copy button); "/ space", undo and clear help manage
+the sequence. Or expand "Paste a message to decode instead": one box
+handles a message with or without its own header — with one, its own
+god-block codes and seed rebuild the exact key needed (even a different
+one than what's currently selected, and its mood/punctuation are shown
+alongside the decoded text); without one, the key currently selected
+above is used instead.
+
+## Custom font
+
+`make_font.py` builds a real, installable Windows `.ttf` font from a key
+file, so you can type normally in any application (Word, Notepad, a
+browser, ...) and see the cipher symbols in place of A-Z:
+
+```bash
+python make_font.py keys/mykey.json
+python make_font.py keys/mykey.json -o MyCipher.ttf --name "Gods Lies - mykey"
+```
+
+Then in Windows: right-click the `.ttf` → **Install**, and pick it from
+the font list in any app. It vectorizes the same real glyph PNGs the
+browser/CLI render (marching-squares contour trace, via scikit-image,
+built into TrueType outlines with fontTools) — same hand-drawn symbols,
+not a redrawn approximation. Covers A-Z/a-z (case-insensitive, same as
+the cipher) and space only; digits/punctuation are left undefined, same
+as they pass through unciphered elsewhere. Requires
+`pip install fonttools scikit-image numpy pillow`.
 
 ## CLI usage
 

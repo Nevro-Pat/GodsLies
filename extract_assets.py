@@ -81,6 +81,15 @@ WHOLE_TILE_ROTATE_GRID9 = {"apate": 90}
 # -- confirmed against the user's own worked example).
 DERIVE_GRID9_FROM = {"mnemon": ("apate", 180)}
 
+# Hermès/Áte's own scanned diamond4 arms (an inward-pointing chevron "X")
+# read as awkward next to the rest of the set. Swapped for Phántasos'/
+# Lóchos' outward-corner ornament style instead -- same plain/dotted
+# pairing as before (Phántasos has no dots like Hermès, Lóchos has dots
+# like Áte) -- with each arm rotated 45° in place so the mark reads as a
+# diagonal wedge (matching a classic pigpen "X" grid's cell shape)
+# instead of pointing straight along its own N/E/S/W axis.
+DERIVE_DIAMOND4_FROM = {"hermes": ("phantasos", 45), "ate": ("lochos", 45)}
+
 
 def strip_frame(tile: Image.Image) -> Image.Image:
     """Remove a diamond4 tile's decorative frame (outer border + X
@@ -336,6 +345,7 @@ def compose_diamond4_tile(cells: dict, half: int = 100, gap: int = 4) -> Image.I
 def main():
     im = Image.open(SRC).convert("RGB")
     grid9_cells_by_god = {}
+    diamond4_cells_by_god = {}
     manifest = {}
     for row_idx, gods in ((0, TOP_GODS), (2, BOTTOM_GODS)):
         for col_idx, god in enumerate(gods):
@@ -374,21 +384,29 @@ def main():
                 manifest[f"{god}/grid9_{pos}"] = round(content_fill_fraction(cell), 3)
             compose_grid9_tile(grid_cells).save(god_dir / "grid9_tile.png")
 
-            d_row = row_idx + 1
-            d_x0, d_x1 = COL_BANDS[d_row][col_idx]
-            d_y0, d_y1 = ROW_BANDS[d_row]
-            diamond_tile = im.crop((d_x0, d_y0, d_x1, d_y1))
-            if outer_border_only:
-                # The X diagonals never span a full row/column the way an
-                # axis-aligned border does, so the row/column profiling in
-                # strip_grid_frame() naturally leaves them alone and only
-                # takes off the tile's own outer square -- unlike
-                # strip_frame()'s connected-component approach, which would
-                # also erase the diagonals since they touch the border.
-                diamond_tile = strip_grid_frame(diamond_tile)
+            if god in DERIVE_DIAMOND4_FROM:
+                source_god, extra_rot = DERIVE_DIAMOND4_FROM[god]
+                diamond_cells = {
+                    direction: cell.rotate(extra_rot, resample=Image.BICUBIC, fillcolor=(0, 0, 0, 0))
+                    for direction, cell in diamond4_cells_by_god[source_god].items()
+                }
             else:
-                diamond_tile = strip_frame(diamond_tile)
-            diamond_cells = crop_diamond4(diamond_tile)
+                d_row = row_idx + 1
+                d_x0, d_x1 = COL_BANDS[d_row][col_idx]
+                d_y0, d_y1 = ROW_BANDS[d_row]
+                diamond_tile = im.crop((d_x0, d_y0, d_x1, d_y1))
+                if outer_border_only:
+                    # The X diagonals never span a full row/column the way an
+                    # axis-aligned border does, so the row/column profiling in
+                    # strip_grid_frame() naturally leaves them alone and only
+                    # takes off the tile's own outer square -- unlike
+                    # strip_frame()'s connected-component approach, which would
+                    # also erase the diagonals since they touch the border.
+                    diamond_tile = strip_grid_frame(diamond_tile)
+                else:
+                    diamond_tile = strip_frame(diamond_tile)
+                diamond_cells = crop_diamond4(diamond_tile)
+            diamond4_cells_by_god[god] = diamond_cells
             for direction, cell in diamond_cells.items():
                 cell.save(god_dir / f"diamond4_{direction}.png")
                 manifest[f"{god}/diamond4_{direction}"] = round(content_fill_fraction(cell), 3)
