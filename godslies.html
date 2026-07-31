@@ -149,36 +149,60 @@
   .tabpanel { display: none; }
   .tabpanel.active { display: block; }
 
-  /* --- slot boxes: 4 independent boxes (grid.1, diamond.1, grid.2,
-     diamond.2), each a pure display of the current selection for that
-     one slot, filled by clicking gallery tiles below (grid/diamond
-     cycle independently). Sized to match the classic-pigpen preview
-     cards (.classic-col .thumbs, below) exactly -- same box, same
-     glyph size -- since those two are this page's two "reference
-     legend" readouts and should read as the same kind of object. The
-     other-gallery's 12 cards stay their own (smaller) size -- they're
-     a picker, not a legend. --- */
-  /* Column stack by default, row layout only once everything provably
-     fits on one line (see the min-width:1240px block below) -- flex-wrap
-     looked appealing but CSS decides a flex container's WIDTH before
-     wrapping happens, from an intrinsic-size formula that (across the
-     width range this row actually lives in) resolves to "fill available
-     space" regardless of how the wrapped lines end up using it -- so
-     whichever wrapped line was short still left a large, resize-dependent
-     trailing gap next to it, no matter what width/max-width was tried
-     here. Two explicit, fully-determined states (stacked vs. single row)
-     sidestep that: there's no in-between "wrapped but still too wide"
-     state for blank space to hide in. */
-  .godblock-row { display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 1.2rem; }
-  /* Grid, not flex-wrap: 4 fixed 116px boxes on plain flex-wrap could
-     split unevenly (3+1) at some widths, leaving blank space next to the
-     lone 4th box -- same ragged-wrap problem .other-gallery had, same
-     fix, scaled down to this box's 4 items (columns restricted to values
-     that evenly divide 4: 1, 2, or 4 -- never 3). */
-  .slot-boxes { display: grid; grid-template-columns: repeat(1, 116px); gap: .6rem; justify-content: center; }
-  @media (min-width: 380px) { .slot-boxes { grid-template-columns: repeat(2, 116px); } }
-  @media (min-width: 640px) { .slot-boxes { grid-template-columns: repeat(4, 116px); } }
-  .slot-box-col { display: flex; flex-direction: column; align-items: center; gap: .35rem; }
+  /* --- The cipher picker's top row: the live selection (4 slots) on the
+     left, the classic-pigpen reference (4 tiles) on the right, a Clear
+     button and divider between them.
+
+     Both halves are `1fr` of one grid and both lay their 4 tiles out on
+     an identical `repeat(4, minmax(0,1fr))` track, so the 8 tiles are
+     always exactly the same size as each other, at every viewport width,
+     without a single hardcoded pixel size to keep in sync. That's also
+     what removes the blank space for good: `1fr` tracks consume 100% of
+     whatever width is available by definition, so there is no leftover
+     space left anywhere to show up as a gap -- earlier attempts sized the
+     tiles in fixed px and then tried to place the unused remainder
+     somewhere unobtrusive, which just moved the hole around (right of the
+     boxes, then both outer edges, then between the halves).
+
+     The right half used to be two bordered "name cards" holding 2 small
+     thumbnails plus a name each -- a different component with different
+     dimensions and extra height, which is why it never matched the left
+     half's size no matter how its thumbnails were restyled, and why it
+     left dead space above and below the shorter left half. Both sides now
+     use the same .block-tile + caption structure, and both carry a
+     .col-label header, so their tops and bottoms line up too. --- */
+  .godblock-row {
+    display: grid; grid-template-columns: 1fr; gap: 1rem;
+    align-items: start; margin-bottom: 1.2rem;
+  }
+  .col-label {
+    font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--accent); margin-bottom: .6rem; font-family: ui-sans-serif, system-ui, sans-serif;
+    text-align: center;
+  }
+  /* Tile tracks. minmax(0,1fr) rather than plain 1fr so a track can shrink
+     below its content's intrinsic width instead of forcing overflow. Below
+     640px the 4 tiles split 2x2 (never 3+1 -- only even divisors of 4, the
+     same even-column rule .other-gallery follows) and the tiles fall back
+     to a fixed size, since at that width filling the row would stretch
+     them absurdly wide. */
+  .slot-boxes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+  /* The classic side nests one 2-column pair per god so the god's name can
+     span both of its tiles instead of being repeated under each. The tiles
+     still come out exactly the same width as the 4 on the left: for a
+     container of width W and gap g, nesting gives ((W-g)/2 - g)/2 =
+     (W-3g)/4, which is precisely the left side's own 4-across result. */
+  .classic-strip { display: grid; grid-template-columns: repeat(1, minmax(0, 1fr)); gap: .6rem; }
+  .classic-pair {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: .6rem; row-gap: .35rem; align-items: start; min-width: 0;
+  }
+  .classic-pair-name { grid-column: 1 / -1; }
+  @media (min-width: 640px) {
+    .slot-boxes { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .classic-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .slot-box-col { display: flex; flex-direction: column; align-items: center; gap: .35rem; min-width: 0; }
   /* Icon-only: the god name and grid/diamond label used to be printed on
      every tile, which read as small and cluttered for what's meant to be
      a quick-glance preview -- the glyph shape itself (a 3x3 grid vs. a
@@ -188,8 +212,17 @@
      than a gallery thumbnail (this is the primary "what's selected"
      readout) but not by much -- a bigger jump made the row overflow its
      own layout rather than reading as more prominent. */
+  /* Fluid, not a fixed 116px: the tile fills its grid track (which is a
+     1fr share of the row -- see .godblock-row above) and aspect-ratio
+     keeps it square, so all 8 tiles stay identical to each other and
+     together consume the full row width at any size, leaving no remainder
+     to surface as blank space. max-width stops them ballooning on an
+     ultrawide screen; min-width keeps them legible on a small one. Used
+     by BOTH the selection slots and the classic-pigpen tiles -- one rule,
+     so the two halves cannot drift apart again. */
   .block-tile {
-    width: 116px; height: 116px; border: 2px solid var(--border); border-radius: 10px;
+    width: 100%; max-width: 168px; min-width: 84px; aspect-ratio: 1;
+    border: 2px solid var(--border); border-radius: 10px; box-sizing: border-box;
     display: flex; align-items: center; justify-content: center;
     background: var(--bg-card); transition: border-color .12s ease, background .12s ease;
   }
@@ -201,8 +234,19 @@
      duplicate (see assignByType) -- makes clear the click registered
      and was refused, not that the tile is unresponsive. */
   .block-tile.blocked { border-color: #c0392b !important; background: rgba(192,57,43,.18) !important; }
-  .block-tile .swatch { width: 90px; height: 90px; display: flex; align-items: center; justify-content: center; }
-  .block-tile .swatch img { width: 90px; height: 90px; }
+  /* Percentages, not px, so the glyph scales with its (now fluid) tile
+     and keeps the same proportion of breathing room inside it. */
+  .block-tile .swatch { width: 78%; height: 78%; display: flex; align-items: center; justify-content: center; }
+  .block-tile .swatch img { width: 100%; height: 100%; }
+  /* The classic-pigpen tiles are clickable (they fill a slot, same as any
+     gallery thumbnail) but must render as the exact same box as the
+     non-interactive selection tiles. Only the generic `button` rule's
+     own additions are reset here -- deliberately NOT `all: unset`, which
+     (being a later rule of equal specificity) would also wipe out the
+     .block-tile sizing/border above and desync the two halves again. */
+  .classic-tile { padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; appearance: none; }
+  .classic-tile:hover { border-color: var(--accent); }
+  .classic-tile.lit { border-color: transparent; }
   /* Caption below each box: the god's grid/diamond reference code (the
      same 2-digit codes the message header uses) so the selection is
      legible without needing to hover for the tooltip. A god's grid code
@@ -224,63 +268,24 @@
      at the same breakpoint .godblock-row itself switches at. */
   .separator { width: min(320px, 90%); height: 2px; background: var(--border); }
 
+  /* Side by side once there's room for 8 tiles plus the divider. The two
+     `1fr` halves are what guarantee the left and right tile groups are
+     identical in size -- and, being fr units, that they jointly consume
+     the entire row with no remainder left to appear as a gap. `auto`
+     tracks for the Clear button and divider take only what they need. */
   @media (min-width: 1240px) {
-    /* No max-width/centering on the row itself -- that capped it to its
-       natural content width and centered the whole cluster, which just
-       relocated the old bug into a smaller but still-visible blank margin
-       on BOTH sides once the card was wider than that cap. Instead the
-       row fills the card's full width, .slot-boxes anchors its true left
-       edge (default flex-start), and margin-left:auto on the Clear button
-       (below) absorbs all the leftover space in one spot, pushing
-       Clear+separator+classic-col as a group flush to the row's true
-       right edge -- classic pigpen genuinely on the right, not floating
-       centered with padding on both outer sides. Safe from the original
-       margin-left:auto bug (see .classic-col, below) because this
-       media query only ever applies once .godblock-row is a single
-       non-wrapping line (flex-wrap is never set to wrap anywhere in this
-       rule) -- there's no "wrapped onto its own line" state left for an
-       auto-margin to misbehave in. */
-    .godblock-row { flex-direction: row; }
+    .godblock-row { grid-template-columns: 1fr auto auto 1fr; }
     .godblock-row > .clear-selection-btn {
       writing-mode: vertical-rl; align-self: stretch;
-      padding: .5rem .4rem; font-size: .78rem; letter-spacing: .03em;
-      margin-left: auto;
+      padding: .5rem .4rem; font-size: .78rem; letter-spacing: .03em; margin: 0;
     }
     .separator { width: 2px; height: auto; align-self: stretch; }
   }
-  /* Fixed-size, not flex:1 -- it used to fill whatever space its siblings
-     left over, so its width (and card sizes) silently depended on how
-     wide the Clear button's translated label happened to render. Always
-     holds exactly 2 cards, so a fixed track size keeps it identical
-     regardless of language. No margin-left:auto here anymore -- it used
-     to pin *this* element to the row's right edge, which broke the
-     instant this wrapped onto its own line alone (auto-margin still
-     pushed it right on that line too, stranding a blank gap under the
-     slot-boxes). The same "push everything after me to the right edge"
-     job is now done once, safely, by .clear-selection-btn's own
-     margin-left:auto in the min-width:1240px block above -- see the
-     comment there for why it's safe now (row-mode never wraps). */
-  .classic-col { flex: 0 0 auto; max-width: 100%; }
-  .classic-col .classic-label {
-    font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
-    color: var(--accent); margin-bottom: .6rem; font-family: ui-sans-serif, system-ui, sans-serif;
-  }
-  /* flex, not grid -- always exactly 2 fixed-size cards, and flex-wrap
-     lets them drop to a second line on a narrow viewport instead of a
-     grid's fixed tracks forcing horizontal overflow. */
-  .classic-col .gallery { display: flex; flex-wrap: wrap; }
-  .classic-col .gallery .name-card { flex: 0 0 auto; }
-  /* Match the selection boxes (.block-tile/.swatch, 116px/90px) exactly --
-     these 2 cards are this page's "reference legend" for the classic
-     pigpen and read as an undersized mismatch next to what they explain.
-     Scoped to just this gallery, not the shared .name-card rule below, so
-     the other 12-god gallery keeps its own (smaller) size. Full selector
-     path (not just ".classic-col .thumbs") needed for specificity -- the
-     generic ".name-card .thumbs button/img" rule below is equally
-     specific by class-count, and being later in the file would otherwise
-     win and silently override this. */
-  .classic-col .gallery .name-card .thumbs button { width: 116px; height: 116px; }
-  .classic-col .gallery .name-card .thumbs img { width: 90px; height: 90px; }
+  /* min-width:0 on both halves: a grid item's default `auto` minimum
+     refuses to shrink below its content, which would push the row wider
+     than its card and reintroduce overflow instead of letting the tiles
+     scale down. */
+  .slot-col, .classic-col { min-width: 0; }
 
   /* --- gallery --- */
   .gallery {
@@ -380,6 +385,15 @@
   }
   .key-status-value { font-weight: 600; color: var(--ink); }
 
+  /* Drop zone / file picker for decoding a message image (see
+     decodeImageToTokens) -- doubles as a click target and a drag target. */
+  .image-drop {
+    border: 2px dashed var(--border); border-radius: 10px; padding: 1.4rem 1rem;
+    text-align: center; color: var(--ink-soft); cursor: pointer; font-size: .88rem;
+    transition: border-color .12s ease, background .12s ease;
+  }
+  .image-drop:hover, .image-drop.dragover { border-color: var(--accent); background: var(--accent-soft); }
+
   footer { text-align: center; color: var(--ink-soft); font-size: .8rem; margin-top: 2.5rem; }
   .footer-tagline { margin: 0 0 1.2rem; }
   .footer-info {
@@ -416,30 +430,40 @@
 <h2><span class="step-badge">1</span><span data-i18n="step_cipher"></span></h2>
 <p class="hint" data-i18n="cipher_hint"></p>
 
+<!-- Two halves of one grid, each holding exactly 4 same-sized tiles (see
+     .godblock-row in the stylesheet): the live selection on the left, the
+     classic pigpen reference on the right. Both use the identical
+     .block-tile component and the identical 4-column track, so the two
+     sides are always pixel-for-pixel the same size and the same height --
+     they used to be a tile vs. a bordered 2-thumb "name card", which is
+     why the right side never matched and left dead space above/below. -->
 <div class="godblock-row">
-  <div class="slot-boxes">
-    <div class="slot-box-col">
-      <div class="block-tile" data-target="g0"><span class="swatch"></span></div>
-      <div class="slot-caption" data-target="g0"></div>
-    </div>
-    <div class="slot-box-col">
-      <div class="block-tile" data-target="d0"><span class="swatch"></span></div>
-      <div class="slot-caption" data-target="d0"></div>
-    </div>
-    <div class="slot-box-col">
-      <div class="block-tile" data-target="g1"><span class="swatch"></span></div>
-      <div class="slot-caption" data-target="g1"></div>
-    </div>
-    <div class="slot-box-col">
-      <div class="block-tile" data-target="d1"><span class="swatch"></span></div>
-      <div class="slot-caption" data-target="d1"></div>
+  <div class="slot-col">
+    <div class="col-label" data-i18n="selection_label"></div>
+    <div class="slot-boxes">
+      <div class="slot-box-col">
+        <div class="block-tile" data-target="g0"><span class="swatch"></span></div>
+        <div class="slot-caption" data-target="g0"></div>
+      </div>
+      <div class="slot-box-col">
+        <div class="block-tile" data-target="d0"><span class="swatch"></span></div>
+        <div class="slot-caption" data-target="d0"></div>
+      </div>
+      <div class="slot-box-col">
+        <div class="block-tile" data-target="g1"><span class="swatch"></span></div>
+        <div class="slot-caption" data-target="g1"></div>
+      </div>
+      <div class="slot-box-col">
+        <div class="block-tile" data-target="d1"><span class="swatch"></span></div>
+        <div class="slot-caption" data-target="d1"></div>
+      </div>
     </div>
   </div>
   <button class="secondary clear-selection-btn" data-i18n="clear_selection"></button>
   <div class="separator"></div>
   <div class="classic-col">
-    <div class="classic-label" data-i18n="classic_label"></div>
-    <div class="gallery classic-gallery"></div>
+    <div class="col-label classic-label" data-i18n="classic_label"></div>
+    <div class="classic-strip"></div>
   </div>
 </div>
 
@@ -530,6 +554,22 @@
         <button class="small secondary" id="read-copyPasteBtn" data-i18n="copy_btn"></button>
       </div>
       <textarea id="read-pasteOut" readonly></textarea>
+    </details>
+
+    <details>
+      <summary data-i18n="image_summary"></summary>
+      <p class="hint" data-i18n="image_hint"></p>
+      <div class="image-drop" id="read-imageDrop">
+        <span data-i18n="image_drop_label"></span>
+        <input type="file" id="read-imageInput" accept="image/*" hidden />
+      </div>
+      <div class="hint" id="read-imageStatus"></div>
+      <div class="glyph-stream" id="read-imageGlyphs"></div>
+      <div class="field-row">
+        <label style="margin:0;" data-i18n="result_label"></label>
+        <button class="small secondary" id="read-copyImageTextBtn" data-i18n="copy_btn"></button>
+      </div>
+      <textarea id="read-imageOut" readonly></textarea>
     </details>
   </div>
   </section>
@@ -625,6 +665,7 @@ const STRINGS = {
     slot_diamond1: "Diamond · 1",
     slot_diamond2: "Diamond · 2",
     clear_selection: "Clear",
+    selection_label: "Your selection",
     classic_label: "Classic pigpen",
 
     step_key: "Your key",
@@ -671,6 +712,14 @@ const STRINGS = {
     paste_placeholder: "mood_slotA_slotB_seed_punctuation\ncoded body\n#\n(header line is optional — omit it to decode with the key set above)",
     decode_btn: "Decode",
     result_label: "Result",
+
+    image_summary: "Decode a message image",
+    image_hint: "Reads an image made by this tool's Copy/Download image button, using the key set above. Mood and punctuation tags aren't read back.",
+    image_drop_label: "Drop an image here, or click to choose one",
+    image_reading: "Reading image…",
+    image_decoded: "Decoded {{count}} symbols ({{skipped}} text tags skipped).",
+    image_failed: "Couldn't read any symbols from that image. Make sure it's an unedited image made by this tool, and that the key above matches.",
+    image_not_an_image: "That file isn't an image.",
 
     alert_choose_4_slots: "Choose a name for all 4 slots first (2 grid, 2 diamond) above.",
     alert_generate_key_first: "Generate a key first.",
@@ -720,6 +769,7 @@ const STRINGS = {
     slot_diamond1: "Losange · 1",
     slot_diamond2: "Losange · 2",
     clear_selection: "Effacer",
+    selection_label: "Votre sélection",
     classic_label: "Pigpen classique",
 
     step_key: "Votre clé",
@@ -766,6 +816,14 @@ const STRINGS = {
     paste_placeholder: "mood_slotA_slotB_seed_punctuation\ncorps chiffré\n#\n(la ligne d'en-tête est optionnelle — omettez-la pour déchiffrer avec la clé définie ci-dessus)",
     decode_btn: "Déchiffrer",
     result_label: "Résultat",
+
+    image_summary: "Déchiffrer une image de message",
+    image_hint: "Lit une image créée par le bouton Copier/Télécharger l'image de cet outil, avec la clé définie ci-dessus. Les étiquettes d'humeur et de ponctuation ne sont pas relues.",
+    image_drop_label: "Déposez une image ici, ou cliquez pour en choisir une",
+    image_reading: "Lecture de l'image…",
+    image_decoded: "{{count}} symboles déchiffrés ({{skipped}} étiquettes de texte ignorées).",
+    image_failed: "Aucun symbole n'a pu être lu dans cette image. Vérifiez qu'il s'agit d'une image non modifiée créée par cet outil, et que la clé ci-dessus correspond.",
+    image_not_an_image: "Ce fichier n'est pas une image.",
 
     alert_choose_4_slots: "Choisissez d'abord un nom pour les 4 cases ci-dessus (2 grilles, 2 losanges).",
     alert_generate_key_first: "Générez d'abord une clé.",
@@ -1381,13 +1439,168 @@ function buildEncodedImageCanvas(coded, mood, punct, key) {
         ctx.fillRect(x, y, cell.w, IMG_CELL);
         ctx.fillStyle = colors.ink;
         ctx.fillText(cell.text, x + cell.w / 2, y + IMG_CELL / 2 + 1);
+      } else if (cell.type === "space") {
+        // A thin divider, mirroring the on-screen .space rule. Drawn rather
+        // than left blank so a word break is still visible (and still
+        // readable back by decodeImageToTokens) when it happens to fall at
+        // the very start or end of a wrapped row, where an empty cell would
+        // leave no gap to infer it from.
+        ctx.fillStyle = colors.border;
+        ctx.fillRect(x + cell.w / 2 - 1.5, y + IMG_CELL * 0.25, 3, IMG_CELL * 0.5);
       }
-      // "space" cells: nothing drawn, the gap alone reads as a word break
       x += cell.w + IMG_GAP;
     }
     y += IMG_CELL + IMG_GAP;
   }
   return canvas;
+}
+
+/* --- reading a message image back (the Read tab's image upload) ---
+
+   The reverse of buildEncodedImageCanvas: find each drawn cell, then work
+   out which glyph it holds by re-rendering all 26 of the current key's
+   glyphs and keeping the closest match. Pixel-reading an image is only
+   possible here because an *uploaded* image (a blob/data URL from the
+   file picker) does not taint the canvas -- unlike the page's own file://
+   PNG assets, which do, and which is why glyph contours had to be baked
+   at build time in the first place (see GLYPH_CONTOURS). Verified
+   directly rather than assumed, since the two cases look identical from
+   the code's point of view and behave oppositely.
+
+   Deliberately does not try to recover the mood/punctuation tags or
+   pass-through punctuation: those are drawn as text, and reading them
+   back would mean bundling character recognition for an arbitrary font.
+   They're detected and counted (they're solid filled pills, ~100% ink,
+   versus a glyph cell's thin strokes) so the caller can say how many were
+   skipped instead of silently dropping them. */
+const IMG_DECODE_N = 48;        // normalized size glyphs are compared at
+const IMG_COLOR_TOL2 = 900;     // squared RGB distance counting as "ink", ~30/channel
+
+function runsOf(flags) {
+  const runs = [];
+  let start = -1;
+  for (let i = 0; i < flags.length; i++) {
+    if (flags[i] && start < 0) start = i;
+    else if (!flags[i] && start >= 0) { runs.push({ start, end: i }); start = -1; }
+  }
+  if (start >= 0) runs.push({ start, end: flags.length });
+  return runs;
+}
+
+function candidateGlyphMask(god, seg, pos) {
+  const c = document.createElement("canvas");
+  c.width = IMG_DECODE_N; c.height = IMG_DECODE_N;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#000";
+  drawGlyphPath(ctx, god, seg, pos, 0, 0, IMG_DECODE_N);
+  const d = ctx.getImageData(0, 0, IMG_DECODE_N, IMG_DECODE_N).data;
+  const mask = new Uint8Array(IMG_DECODE_N * IMG_DECODE_N);
+  for (let i = 0; i < mask.length; i++) mask[i] = d[i * 4 + 3] > 127 ? 1 : 0;
+  return mask;
+}
+
+// Intersection-over-union complement rather than plain pixel difference:
+// these glyphs are mostly empty space, so a raw pixel-match score would sit
+// near 100% for every candidate and barely discriminate between them.
+function maskDistance(a, b) {
+  let diff = 0, union = 0;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) diff++;
+    if (a[i] || b[i]) union++;
+  }
+  return union ? diff / union : 1;
+}
+
+function decodeImageToTokens(source, key) {
+  const w = source.width, h = source.height;
+  const work = document.createElement("canvas");
+  work.width = w; work.height = h;
+  const wctx = work.getContext("2d");
+  wctx.drawImage(source, 0, 0);
+  const px = wctx.getImageData(0, 0, w, h).data;
+
+  // (0,0) is always padding in a generated image, so it defines the
+  // background -- which varies with whichever theme was active when the
+  // image was made, hence sampling it instead of hardcoding a colour.
+  const bg = [px[0], px[1], px[2]];
+  const inked = (x, y) => {
+    const i = (y * w + x) * 4;
+    const dr = px[i] - bg[0], dg = px[i + 1] - bg[1], db = px[i + 2] - bg[2];
+    return dr * dr + dg * dg + db * db > IMG_COLOR_TOL2;
+  };
+
+  const rowHas = new Uint8Array(h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) { if (inked(x, y)) { rowHas[y] = 1; break; } }
+  }
+  const bands = runsOf(rowHas).filter(b => b.end - b.start > 8);
+  if (!bands.length) return null;
+
+  const candidates = ALL_SLOTS.map(([seg, which, pos]) => ({
+    seg, which, pos,
+    mask: candidateGlyphMask(nameFor(key, seg, which), seg, pos),
+  }));
+
+  const tokens = [];
+  let skippedText = 0;
+  let matched = 0;
+
+  for (const band of bands) {
+    const bandH = band.end - band.start;
+    // A row's height is one cell, so it also tells us how much the image
+    // was scaled from the 64px cells it was drawn with.
+    const scale = bandH / IMG_CELL;
+    const colHas = new Uint8Array(w);
+    for (let x = 0; x < w; x++) {
+      for (let y = band.start; y < band.end; y++) { if (inked(x, y)) { colHas[x] = 1; break; } }
+    }
+    const segs = runsOf(colHas);
+    for (const s of segs) {
+      const segW = s.end - s.start;
+      // A word break is drawn as a narrow divider tick, so it segments out
+      // on its own -- no need to infer it from the spacing between cells,
+      // which silently lost any space that landed at a row boundary.
+      if (segW / scale <= 8) { tokens.push("/"); continue; }
+
+      let ink = 0;
+      for (let y = band.start; y < band.end; y++) {
+        for (let x = s.start; x < s.end; x++) if (inked(x, y)) ink++;
+      }
+      const fill = ink / (segW * bandH);
+      // Text pills are filled solid; a glyph cell is a thin border plus
+      // strokes, so it never comes close to this.
+      if (fill > 0.8 || segW / scale < IMG_CELL * 0.55) { skippedText++; continue; }
+
+      // Crop to exactly the box drawGlyphPath drew into (the cell inset by
+      // the same 8% padding buildEncodedImageCanvas uses), so the crop and
+      // the candidates share one coordinate system.
+      const pad = segW * 0.08;
+      const cell = document.createElement("canvas");
+      cell.width = IMG_DECODE_N; cell.height = IMG_DECODE_N;
+      const cctx = cell.getContext("2d");
+      cctx.drawImage(work, s.start + pad, band.start + pad, segW - pad * 2, bandH - pad * 2,
+                     0, 0, IMG_DECODE_N, IMG_DECODE_N);
+      const cd = cctx.getImageData(0, 0, IMG_DECODE_N, IMG_DECODE_N).data;
+      const mask = new Uint8Array(IMG_DECODE_N * IMG_DECODE_N);
+      for (let i = 0; i < mask.length; i++) {
+        const dr = cd[i * 4] - bg[0], dg = cd[i * 4 + 1] - bg[1], db = cd[i * 4 + 2] - bg[2];
+        mask[i] = dr * dr + dg * dg + db * db > IMG_COLOR_TOL2 ? 1 : 0;
+      }
+
+      let best = null, bestD = Infinity;
+      for (const cand of candidates) {
+        const d = maskDistance(mask, cand.mask);
+        if (d < bestD) { bestD = d; best = cand; }
+      }
+      if (best && bestD < 0.62) {
+        tokens.push(slotCode(best.seg, best.which, best.pos));
+        matched++;
+      } else {
+        tokens.push("?");
+      }
+    }
+  }
+  return { coded: tokens.join(" "), matched, skippedText };
 }
 
 // cmap format 4, one segment per mapped codepoint. Less compact than
@@ -1692,7 +1905,7 @@ function wireCopy(btnId, getText) {
 
 // --- the one cipher picker + key generator, shared by Write and Read ---
 function createCipherPanel() {
-  const classicGallery = document.querySelector(".classic-gallery");
+  const classicStrip = document.querySelector(".classic-strip");
   const otherGallery = document.querySelector(".other-gallery");
   const clearBtn = document.querySelector(".clear-selection-btn");
   const seedInput = document.querySelector(".seed-input");
@@ -1730,6 +1943,46 @@ function createCipherPanel() {
   function chipFor(slot) { return document.querySelector(`.block-tile[data-target="${slot}"]`); }
   function captionFor(slot) { return document.querySelector(`.slot-caption[data-target="${slot}"]`); }
 
+  // The classic pigpen reference: 4 plain tiles (Hermès grid/diamond, Áte
+  // grid/diamond) using the very same .block-tile box the selection slots
+  // use, rather than the bordered 2-thumbnail "name card" the 12-god
+  // picker below uses. These two rows sit side by side and are read as one
+  // comparison, so they have to be the same object at the same size --
+  // as separate components they never matched and left dead space.
+  function buildClassicStrip(container, gods) {
+    container.innerHTML = "";
+    for (const [id, label] of gods) {
+      // One pair per god: its grid tile and diamond tile side by side under
+      // a single shared name, rather than repeating the name under each.
+      const pair = document.createElement("div");
+      pair.className = "classic-pair";
+      for (const [seg, prefix, titleKey] of [
+        ["grid9", "g", "title_grid_style"],
+        ["diamond4", "d", "title_diamond_style"],
+      ]) {
+        const btn = document.createElement("button");
+        btn.className = "block-tile classic-tile";
+        btn.dataset.name = id;
+        btn.dataset.seg = prefix;
+        btn.title = `${label} — ${t(titleKey)}`;
+        const swatch = document.createElement("span");
+        swatch.className = "swatch";
+        const img = document.createElement("img");
+        img.src = assetPath(id, seg, "tile");
+        img.alt = `${label} ${seg}`;
+        swatch.appendChild(img);
+        btn.appendChild(swatch);
+        btn.onclick = () => assignByType(prefix, id);
+        pair.appendChild(btn);
+      }
+      const caption = document.createElement("div");
+      caption.className = "slot-caption classic-pair-name";
+      caption.textContent = label;
+      pair.appendChild(caption);
+      container.appendChild(pair);
+    }
+  }
+
   function buildGalleryInto(container, gods) {
     container.innerHTML = "";
     for (const [id, label] of gods) {
@@ -1754,7 +2007,17 @@ function createCipherPanel() {
   }
 
   function refreshUI() {
-    const cards = [...classicGallery.children, ...otherGallery.children];
+    // Classic-pigpen tiles: same "lit" tint the gallery thumbnails get, but
+    // applied to the tile itself since these have no surrounding card.
+    classicStrip.querySelectorAll(".classic-tile").forEach(btn => {
+      const tints = SLOT_ORDER
+        .filter(s => s[0] === btn.dataset.seg && selection[s] === btn.dataset.name)
+        .map(s => SLOT_TINTS[s]);
+      btn.classList.toggle("lit", tints.length > 0);
+      btn.style.background = tints.length ? blend(tints) : "";
+    });
+
+    const cards = [...otherGallery.children];
     cards.forEach(card => {
       const id = card.dataset.name;
       card.querySelectorAll(".corner-tag").forEach(tag => tag.style.display = "none");
@@ -1942,7 +2205,7 @@ function createCipherPanel() {
     if (onClearCb) onClearCb();
   };
 
-  buildGalleryInto(classicGallery, CLASSIC_GODS);
+  buildClassicStrip(classicStrip, CLASSIC_GODS);
   buildGalleryInto(otherGallery, OTHER_GODS);
   refreshUI();
 
@@ -1955,6 +2218,10 @@ function createCipherPanel() {
     // language-dependent text that isn't just a static data-i18n sweep.
     refreshLanguage() {
       updateKeyStatusText();
+      // Rebuilt (not just swept) because each tile's tooltip is composed at
+      // build time from the god's name + a translated style label; refreshUI
+      // below then re-applies the "lit" state to the fresh tiles.
+      buildClassicStrip(classicStrip, CLASSIC_GODS);
       refreshUI();
       if (currentKey) renderChart(currentKey, chartEl, chartClickHandler);
     },
@@ -2117,6 +2384,51 @@ document.getElementById("read-pasteBtn").onclick = () => {
 };
 
 wireCopy("read-copyPasteBtn", () => document.getElementById("read-pasteOut").value);
+
+// --- Read: decode a message image (see decodeImageToTokens) ---
+const imageDrop = document.getElementById("read-imageDrop");
+const imageInput = document.getElementById("read-imageInput");
+const imageStatus = document.getElementById("read-imageStatus");
+const imageOut = document.getElementById("read-imageOut");
+const imageGlyphs = document.getElementById("read-imageGlyphs");
+
+function handleImageFile(file) {
+  const key = cipher.getKey();
+  if (!key) { imageStatus.textContent = t("alert_choose_4_styles"); return; }
+  if (!file || !file.type.startsWith("image/")) { imageStatus.textContent = t("image_not_an_image"); return; }
+  imageStatus.textContent = t("image_reading");
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    let result = null;
+    try { result = decodeImageToTokens(img, key); }
+    catch { result = null; }
+    if (!result || !result.matched) {
+      imageStatus.textContent = t("image_failed");
+      imageOut.value = "";
+      renderGlyphStream([], key, imageGlyphs);
+      return;
+    }
+    imageOut.value = decode(result.coded, key);
+    renderGlyphStream(result.coded.split(/\s+/).filter(Boolean), key, imageGlyphs);
+    imageStatus.textContent = t("image_decoded", { count: result.matched, skipped: result.skippedText });
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); imageStatus.textContent = t("image_failed"); };
+  img.src = url;
+}
+
+imageDrop.onclick = () => imageInput.click();
+imageInput.onchange = () => { if (imageInput.files[0]) handleImageFile(imageInput.files[0]); };
+["dragenter", "dragover"].forEach(evt =>
+  imageDrop.addEventListener(evt, e => { e.preventDefault(); imageDrop.classList.add("dragover"); }));
+["dragleave", "drop"].forEach(evt =>
+  imageDrop.addEventListener(evt, e => { e.preventDefault(); imageDrop.classList.remove("dragover"); }));
+imageDrop.addEventListener("drop", e => {
+  const file = e.dataTransfer.files[0];
+  if (file) handleImageFile(file);
+});
+wireCopy("read-copyImageTextBtn", () => imageOut.value);
 
 // --- step-3 local tabs: Write / Read ---
 document.querySelectorAll(".tabbtn").forEach(btn => {
