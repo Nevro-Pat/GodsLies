@@ -346,7 +346,34 @@ def compose_diamond4_tile(cells: dict, half: int = 100, gap: int = 4) -> Image.I
     for direction, cell in cells.items():
         thumb = cell.resize((half, half), Image.LANCZOS)
         out.paste(thumb, positions[direction], thumb)
-    return out
+    return _crop_to_content_square(out)
+
+
+def _crop_to_content_square(img: Image.Image, margin: int = 6) -> Image.Image:
+    """Crop tight around the actual ink, then pad the shorter axis back
+    out so the result stays square. A cross/plus arrangement (4 arms
+    around a center, unlike grid9's dense edge-to-edge 3x3) leaves its
+    canvas corners empty by construction -- that dead space doesn't
+    matter for the per-letter glyphs (drawn from the individual
+    diamond4_<N/E/S/W>.png crops, untouched here), but it made the
+    *composed preview tile* look small once scaled down into a fixed-
+    size thumbnail box elsewhere. This only changes what fraction of
+    that same-size box the image fills, never the box itself."""
+    w, h = img.size
+    alpha = np.array(img)[:, :, 3]
+    ys, xs = np.nonzero(alpha)
+    if len(xs) == 0:
+        return img
+    x0, x1 = max(0, xs.min() - margin), min(w, xs.max() + 1 + margin)
+    y0, y1 = max(0, ys.min() - margin), min(h, ys.max() + 1 + margin)
+    cw, ch = x1 - x0, y1 - y0
+    if cw > ch:
+        pad = (cw - ch) // 2
+        y0, y1 = max(0, y0 - pad), min(h, y1 + (cw - ch - pad))
+    elif ch > cw:
+        pad = (ch - cw) // 2
+        x0, x1 = max(0, x0 - pad), min(w, x1 + (ch - cw - pad))
+    return img.crop((x0, y0, x1, y1))
 
 
 def main():

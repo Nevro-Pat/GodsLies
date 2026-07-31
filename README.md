@@ -132,7 +132,9 @@ cell/arm image is shown (chart, write/read results).
   used instead)
 - `make_font.py` — builds a real, installable Windows `.ttf` font from a
   key file: type normally in any app and see the cipher symbols instead
-  of A-Z. See "Custom font" below.
+  of A-Z. Also bakes `godslies.html`'s `GLYPH_CONTOURS` block
+  (`--bake-html`), which is what powers that page's own **Download
+  font** button. See "Custom font" below.
 - `keys/` — generated alphabet keys, saved as JSON. **Keep these safe** —
   losing a key means anything encoded with it can't be decoded again.
 
@@ -151,17 +153,25 @@ Open `godslies.html` directly in a browser (fully offline, no server
 needed). One cipher + key setup is shared by both **Write** and **Read**
 (small tabs near the bottom, not separate keys).
 
-Click any name's grid or diamond tile to fill the next open slot (Block
-A's grid/diamond, then Block B's) — grid and diamond fill independently,
-and once both of a type are full, clicking again replaces the first,
-then the second, and so on, so there's never a need to target a slot
-first. "Clear" resets all 4. Then set an optional seed (🎲 suggests a
-common word/name — since the seed word doubles as the message header's
-seed, a memorable one is just as good as a random number) and/or
-download the key. Once all 4 slots are filled, the alphabet chart fills
-in automatically. Accented letters (é, ç, ñ, ...) and common ligatures
-(œ, æ, ß, ø) fold to their base letter before encoding — decoding a
-message back returns the base letter, not the original accent.
+Click any name's grid or diamond tile to fill the next open slot (grid·1,
+diamond·1, grid·2, diamond·2) — grid and diamond fill independently, and
+once both of a type are full, clicking again replaces the first, then
+the second, and so on, so there's never a need to target a slot first.
+The same god can't fill both grid slots (or both diamond slots) — that
+would mean 18 of the 26 letters reuse just one visual style, so a
+same-type repeat is rejected (a brief red flash on the slot) instead.
+Each of the 4 slot boxes shows its god's reference code underneath (the
+same 2-digit code the message header uses); if a god ends up in both
+slots of a *different* segment type (e.g. the same name for grid·1 and
+diamond·1), showing its name there instead of two unrelated-looking
+numbers is clearer. "Clear" resets all 4. Then set an optional seed (🎲
+suggests a common word/name — since the seed word doubles as the message
+header's seed, a memorable one is just as good as a random number)
+and/or download the key or a matching installable font (see "Custom
+font" below). Once all 4 slots are filled, the alphabet chart fills in
+automatically. Accented letters (é, ç, ñ, ...) and common ligatures (œ,
+æ, ß, ø) fold to their base letter before encoding — decoding a message
+back returns the base letter, not the original accent.
 
 **Write**: type plaintext, optionally set a mood tag/punctuation right
 below it, and hit Encode — the result shows as symbols (mood and
@@ -182,9 +192,26 @@ above is used instead.
 
 ## Custom font
 
-`make_font.py` builds a real, installable Windows `.ttf` font from a key
-file, so you can type normally in any application (Word, Notepad, a
-browser, ...) and see the cipher symbols in place of A-Z:
+Both the browser tool and `make_font.py` build a real, installable
+Windows `.ttf` font from a key, so you can type normally in any
+application (Word, Notepad, a browser, ...) and see the cipher symbols
+in place of A-Z. Either way, the font shows the same real hand-drawn
+glyphs the browser/CLI render — not a redrawn approximation — and
+covers A-Z/a-z (case-insensitive, same as the cipher) plus space and
+accented Latin letters (é, ç, ñ, ... folded to their base letter, same
+as `encode()` does — see "Browser usage" above). Digits, punctuation,
+and ligatures (œ, æ, ß, ø) are left undefined, same as they pass
+through unciphered/unfolded elsewhere.
+
+**In the browser** (no install, no terminal): once a key is ready, click
+**🔤 Download font** next to "Download key" in step 2. It's built
+entirely client-side — vectorized outlines are pre-computed offline (see
+below) and baked into `godslies.html`, and a small hand-written
+TrueType writer assembles the `.ttf` and downloads it directly, all in
+JS, no server involved.
+
+**From the CLI**, e.g. for scripting or batch-generating several keys'
+fonts at once:
 
 ```bash
 python make_font.py keys/mykey.json
@@ -192,13 +219,20 @@ python make_font.py keys/mykey.json -o MyCipher.ttf --name "Gods Lies - mykey"
 ```
 
 Then in Windows: right-click the `.ttf` → **Install**, and pick it from
-the font list in any app. It vectorizes the same real glyph PNGs the
-browser/CLI render (marching-squares contour trace, via scikit-image,
-built into TrueType outlines with fontTools) — same hand-drawn symbols,
-not a redrawn approximation. Covers A-Z/a-z (case-insensitive, same as
-the cipher) and space only; digits/punctuation are left undefined, same
-as they pass through unciphered elsewhere. Requires
+the font list in any app. Requires
 `pip install fonttools scikit-image numpy pillow`.
+
+Both paths trace the same way (marching-squares contour trace via
+scikit-image, simplified, then built into TrueType outlines) — the
+browser just can't do that tracing itself at runtime (`canvas`'s
+`getImageData()` throws a SecurityError on `file://`-loaded images, so
+there's no way to read a glyph PNG's pixels from JS in the fully-offline
+mode this tool is built for). Instead, `python make_font.py --bake-html`
+pre-traces every glyph once and bakes the result into a `GLYPH_CONTOURS`
+block inside `godslies.html`, the same way `extract_assets.py` already
+bakes `FILL_MANIFEST`. **Re-run it after `extract_assets.py`** whenever
+the source scan or glyph-cleanup logic changes, so the browser's font
+button stays in sync with the real assets.
 
 ## CLI usage
 
