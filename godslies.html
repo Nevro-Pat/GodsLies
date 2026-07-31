@@ -134,8 +134,29 @@
   .field-row { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin: .6rem 0 .3rem; flex-wrap: wrap; }
   .field-row label { margin: 0; }
   .header-line { font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace; font-size: .85rem; color: var(--ink-soft); margin-top: .5rem; word-break: break-all; }
+  /* Plain-language reading of the header line above it -- which gods, which
+     half of each, and the seed -- so nothing about the key needs a lookup
+     in the code table to understand. */
+  .header-summary { font-size: .82rem; color: var(--ink-soft); margin-top: .2rem; }
+  /* The mood/punctuation envelope, shown identically under the Write result
+     and under a decoded pasted message. Always rendered once there's a
+     result (an unset field reads "—") so it can never look like the tags
+     silently vanished. */
+  .tag-row {
+    display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; align-items: baseline;
+    margin-top: .5rem; font-size: .82rem; color: var(--ink-soft);
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .tag-row .tag-label { text-transform: uppercase; letter-spacing: .04em; font-size: .68rem; }
+  .tag-row .tag-value { color: var(--accent); font-weight: 700; margin-left: .35rem; }
+  .tag-row .tag-value.empty { color: var(--ink-soft); font-weight: 400; }
 
-  img.glyph, img.tile-preview { filter: var(--glyph-filter); }
+  /* Every symbol image is black ink on transparency, so dark mode has to
+     invert them all. Covers the tile previews by their containers (they
+     carry no class of their own) -- this used to name an `img.tile-preview`
+     class that no longer exists, which left all 32 tile previews rendering
+     black-on-dark, i.e. nearly invisible, in dark mode. */
+  img.glyph, .swatch img, .thumbs img { filter: var(--glyph-filter); }
 
   /* --- tabs: now only used for the local Write/Read switch inside step 3 --- */
   .tabbar { display: flex; gap: .4rem; margin-bottom: 1.4rem; border-bottom: 2px solid var(--border); }
@@ -197,7 +218,10 @@
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: .6rem; row-gap: .35rem; align-items: start; min-width: 0;
   }
-  .classic-pair-name { grid-column: 1 / -1; }
+  /* Same caption box as a selection slot (so both halves of the row keep
+     the same height), holding the god's name the way a filled slot's own
+     name line reads. */
+  .classic-pair-name { grid-column: 1 / -1; color: var(--accent); font-weight: 600; }
   @media (min-width: 640px) {
     .slot-boxes { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .classic-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -247,19 +271,17 @@
   .classic-tile { padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; appearance: none; }
   .classic-tile:hover { border-color: var(--accent); }
   .classic-tile.lit { border-color: transparent; }
-  /* Caption below each box: the god's grid/diamond reference code (the
-     same 2-digit codes the message header uses) so the selection is
-     legible without needing to hover for the tooltip. A god's grid code
-     and diamond code are two DIFFERENT numbers (e.g. Árnesis = 25/52),
-     so if that same god fills a grid slot *and* a diamond slot, the two
-     captions would show unrelated-looking numbers with no visible link
-     between them -- showing the name in every slot that god occupies
-     instead makes the connection obvious (see refreshUI()). */
+  /* Caption below each box: the god's grid/diamond code (the same 2-digit
+     codes the message header uses) AND its name, always both -- see
+     refreshUI(). The fixed min-height keeps both halves of the row the
+     same height whether a box is filled or not. */
   .slot-caption {
-    font-size: .72rem; font-weight: 700; color: var(--ink-soft); text-align: center;
-    min-height: 1em; font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: .72rem; text-align: center; line-height: 1.25;
+    min-height: 2.2em; font-family: ui-sans-serif, system-ui, sans-serif;
+    display: flex; flex-direction: column; justify-content: center;
   }
-  .slot-caption.duplicate { color: var(--accent); }
+  .slot-caption .slot-code { font-weight: 700; color: var(--ink-soft); }
+  .slot-caption .slot-name { color: var(--accent); font-weight: 600; }
   /* Plain horizontal button + horizontal rule while .godblock-row is
      column-stacked (a tall vertical-text sliver or a full-height divider
      wouldn't make sense between two full-width blocks); the media query
@@ -267,6 +289,14 @@
      full-height divider once the row becomes a single horizontal line,
      at the same breakpoint .godblock-row itself switches at. */
   .separator { width: min(320px, 90%); height: 2px; background: var(--border); }
+  /* Clearing all 4 slots throws the current key away, so it reads as the
+     one destructive control here -- same red .block-tile.blocked uses for
+     a refused pick, rather than disappearing into the transparent
+     .secondary style. Size untouched, so the row's tracks don't move. */
+  button.clear-selection-btn {
+    color: #c0392b; border-color: #c0392b; background: rgba(192,57,43,.12);
+  }
+  button.clear-selection-btn:hover { background: #c0392b; color: #fff8ec; filter: none; }
 
   /* Side by side once there's room for 8 tiles plus the divider. The two
      `1fr` halves are what guarantee the left and right tile groups are
@@ -284,8 +314,20 @@
   /* min-width:0 on both halves: a grid item's default `auto` minimum
      refuses to shrink below its content, which would push the row wider
      than its card and reintroduce overflow instead of letting the tiles
-     scale down. */
-  .slot-col, .classic-col { min-width: 0; }
+     scale down.
+
+     Both halves carry the SAME padding and border box -- the left one's
+     are transparent. That keeps the two `1fr` tracks identical inside, so
+     all 8 tiles stay the same size; giving only the card side a
+     border+padding would have quietly shrunk its 4 tiles. */
+  .slot-col, .classic-col {
+    min-width: 0; padding: .75rem; border: 2px solid transparent;
+    border-radius: 12px; box-sizing: border-box;
+  }
+  /* One card behind the whole classic pair, the same object the 12 other
+     gods each sit in (see .name-card) -- Hermès and Áte used to be the
+     only styles presented as bare tiles on the page background. */
+  .classic-col { border-color: var(--border); background: var(--bg); }
 
   /* --- gallery --- */
   .gallery {
@@ -362,11 +404,6 @@
   .glyph-stream button.cell { border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; }
   .glyph-stream button.cell:hover { outline: 1px solid #b23; }
   .glyph-stream .empty-hint { color: var(--ink-soft); font-size: .85rem; padding: .4rem; }
-  /* mood/punct tags folded into the encoded-result stream: same family as a
-     literal pass-through cell, but tinted so they read as "framing" rather
-     than "part of the ciphertext". */
-  .glyph-stream .tag-cell { width: auto; min-width: 34px; padding: 0 8px; background: var(--accent-soft); }
-  .glyph-stream .tag-cell .lit { color: var(--accent); font-weight: 700; }
 
   .key-status {
     display: block; font-size: .9rem; color: var(--ink-soft); margin-top: .6rem;
@@ -515,17 +552,21 @@
       <button class="small secondary" id="write-copyImageBtn" data-i18n="copy_image_btn"></button>
       <button class="small secondary" id="write-downloadImageBtn" data-i18n="download_image_btn"></button>
     </div>
+    <!-- Footnote to the "Copy cipher text" button above it, not to the
+         result below. -->
+    <p class="hint" data-i18n="font_text_hint" style="margin-bottom:.6rem;"></p>
     <div class="glyph-stream" id="write-encodeGlyphs"></div>
+    <!-- Mood/punctuation on their own row, never as cells in the stream:
+         the stream is the ciphertext, these two are the envelope around
+         it. Same row, same wording, in Read. -->
+    <div class="tag-row" id="write-tagRow"></div>
     <div class="header-line" id="write-headerLine"></div>
-    <p class="hint" data-i18n="font_text_hint"></p>
+    <div class="header-summary" id="write-headerSummary"></div>
 
-    <details>
-      <summary data-i18n="show_text_summary"></summary>
-      <div class="field-row" style="justify-content:flex-end;">
-        <button class="small secondary" id="write-copyFullBtn" data-i18n="copy_btn"></button>
-      </div>
-      <textarea id="write-fullTextOut" class="mono" readonly style="min-height:5rem;"></textarea>
-    </details>
+    <!-- This box holds exactly what "Copy as codes" puts on the clipboard,
+         so there's no second, slightly-different text path. -->
+    <label for="write-fullTextOut" data-i18n="full_text_label"></label>
+    <textarea id="write-fullTextOut" class="mono" readonly style="min-height:5rem;"></textarea>
   </div>
 
   <div class="tabpanel" data-tab="read">
@@ -548,12 +589,15 @@
       <p class="hint" data-i18n="paste_hint"></p>
       <textarea id="read-pasteIn" class="mono" data-i18n-placeholder="paste_placeholder"></textarea>
       <button class="small secondary" id="read-pasteBtn" data-i18n="decode_btn"></button>
-      <div class="hint" id="read-pasteMoodPunct"></div>
       <div class="field-row">
         <label style="margin:0;" data-i18n="result_label"></label>
         <button class="small secondary" id="read-copyPasteBtn" data-i18n="copy_btn"></button>
       </div>
       <textarea id="read-pasteOut" readonly></textarea>
+      <!-- Same row, same place under the result as Write's: this is the
+           only Read path carrying a header, so the only one with
+           mood/punctuation to show. -->
+      <div class="tag-row" id="read-pasteMoodPunct"></div>
     </details>
 
     <details>
@@ -629,8 +673,7 @@ const GLYPH_CONTOURS = {"apate/diamond4_E":[[116,92,107,92,100,86,98,81,100,69,1
 // data-i18n-placeholder / data-i18n-title and swept on every applyLanguage()
 // call; anything generated at runtime (alerts, key status, tooltips, copy-
 // button flashes) goes through t() instead of a hardcoded string. "Gods
-// Lies" itself and the slotA/slotB/mood/seed/punctuation template tokens
-// stay untranslated -- they're a name and literal format syntax, not prose.
+// Lies" itself stays untranslated -- it's a name, not prose.
 // The footer_text tagline is deliberately English-only in BOTH languages
 // (see the fr block below and applyLanguage()) -- "an honest cipher" is a
 // pun that doesn't survive a literal French translation.
@@ -642,15 +685,16 @@ const GLYPH_CONTOURS = {"apate/diamond4_E":[[116,92,107,92,100,86,98,81,100,69,1
 //   - cipher_hint: filling a slot auto-advances Grid·1 -> Grid·2 ->
 //     Diamond·1 -> Diamond·2; once all 4 are full, clicking again rotates
 //     back to replace Grid·1/Diamond·1, then Grid·2/Diamond·2, and so on
-//     (grid and diamond rotate independently -- see rotatingSlotOfType()).
+//     (grid and diamond rotate independently -- see peekSlotOfType()).
 //     A tile's colored corner shows every slot it's currently filling.
 //   - key_hint: the alphabet/seed/download button are one unit (the
 //     "key"); the Read tab's chart doubles as its decode input.
 //   - write_mood_hint: mood/punctuation aren't enciphered -- they ride
 //     along in the plain-text message header (see the write-encodeBtn
-//     handler) alongside the key's god-block codes and seed.
+//     handler) alongside the key's god codes/names and seed, and are shown
+//     one single way everywhere via renderTagRow().
 //   - paste_hint / message header grammar: fully documented in README.md
-//     ("Message format") and in godRefCode()/parseGodRef() above.
+//     ("Message format") and in cipherField()/parseCipherField() above.
 const STRINGS = {
   en: {
     tagline: "A pigpen cipher drawn from fourteen small gods, each with their own way of lying — mix any two grid-shaped ciphers with any two diamond-shaped ciphers into your own private alphabet, then write and read in symbols.",
@@ -688,7 +732,7 @@ const STRINGS = {
     plaintext_placeholder: "Type a message...",
     mood_label: "Mood tag (optional)",
     punct_label: "Punctuation (optional)",
-    write_mood_hint: "Optional — included with the encoded result below.",
+    write_mood_hint: "Optional — carried along with the message, not enciphered.",
     encode_btn: "Encode",
     encoded_result_label: "Encoded result",
     copy_codes_btn: "📋 Copy as codes",
@@ -697,7 +741,7 @@ const STRINGS = {
     copy_image_btn: "🖼 Copy image",
     download_image_btn: "⬇ Download image",
     copy_image_unsupported: "Not supported here — downloading instead",
-    show_text_summary: "Show as text (header + codes — for pasting into Read, or anywhere else)",
+    full_text_label: "As text — header + codes, for pasting into Read or anywhere else",
     copy_btn: "📋 Copy",
 
     read_hint: "Click symbols in the chart above, in order, to rebuild the message. Use / for a space.",
@@ -709,7 +753,7 @@ const STRINGS = {
     decoded_text_label: "Decoded text",
     paste_summary: "Paste a message to decode instead (header optional)",
     paste_hint: "Paste a coded message, with or without its header line.",
-    paste_placeholder: "mood_slotA_slotB_seed_punctuation\ncoded body\n#\n(header line is optional — omit it to decode with the key set above)",
+    paste_placeholder: "mood_codes.and.names_seed_punctuation\ncoded body\n(header line is optional — omit it to decode with the key set above)",
     decode_btn: "Decode",
     result_label: "Result",
 
@@ -727,9 +771,15 @@ const STRINGS = {
     alert_paste_first: "Paste a coded message first.",
     alert_no_header_no_key: "No header found in that text, and no key chosen above — pick your 4 styles first, or paste a message that includes its own header.",
     header_line: "Header → {{header}}",
+    header_grid_only: "{{god}} grid",
+    header_diamond_only: "{{god}} diamond",
+    header_whole_god: "{{god}} (grid + diamond)",
+    header_seed: "seed “{{seed}}”",
     couldnt_derive_key: "Couldn't derive a key from that header: {{msg}}",
-    unknown_god_code_error: "unknown god-block code in header",
-    mood_punct_display: "Mood: {{mood}}   ·   Punctuation: {{punct}}",
+    unknown_god_code_error: "unknown god code or name in header",
+    incomplete_header_error: "a header must name 2 grid styles and 2 diamond styles",
+    mood_label_short: "Mood",
+    punct_label_short: "Punctuation",
     copy_nothing_yet: "Nothing yet",
     copy_copied: "Copied!",
     copy_failed: "Couldn't copy",
@@ -792,7 +842,7 @@ const STRINGS = {
     plaintext_placeholder: "Tapez un message…",
     mood_label: "Humeur (optionnel)",
     punct_label: "Ponctuation (optionnel)",
-    write_mood_hint: "Optionnel — inclus avec le résultat chiffré ci-dessous.",
+    write_mood_hint: "Optionnel — transporté avec le message, non chiffré.",
     encode_btn: "Chiffrer",
     encoded_result_label: "Résultat chiffré",
     copy_codes_btn: "📋 Copier en codes",
@@ -801,7 +851,7 @@ const STRINGS = {
     copy_image_btn: "🖼 Copier l'image",
     download_image_btn: "⬇ Télécharger l'image",
     copy_image_unsupported: "Non pris en charge ici — téléchargement à la place",
-    show_text_summary: "Afficher en texte (en-tête + codes — à coller dans Lire, ou ailleurs)",
+    full_text_label: "En texte — en-tête + codes, à coller dans Lire ou ailleurs",
     copy_btn: "📋 Copier",
 
     read_hint: "Cliquez sur les symboles de la grille ci-dessus, dans l'ordre, pour reconstituer le message. Utilisez / pour un espace.",
@@ -813,7 +863,7 @@ const STRINGS = {
     decoded_text_label: "Texte déchiffré",
     paste_summary: "Coller un message à déchiffrer à la place (en-tête optionnel)",
     paste_hint: "Collez un message chiffré, avec ou sans sa ligne d'en-tête.",
-    paste_placeholder: "mood_slotA_slotB_seed_punctuation\ncorps chiffré\n#\n(la ligne d'en-tête est optionnelle — omettez-la pour déchiffrer avec la clé définie ci-dessus)",
+    paste_placeholder: "humeur_codes.et.noms_graine_ponctuation\ncorps chiffré\n(la ligne d'en-tête est optionnelle — omettez-la pour déchiffrer avec la clé définie ci-dessus)",
     decode_btn: "Déchiffrer",
     result_label: "Résultat",
 
@@ -831,9 +881,15 @@ const STRINGS = {
     alert_paste_first: "Collez d'abord un message chiffré.",
     alert_no_header_no_key: "Aucun en-tête trouvé dans ce texte, et aucune clé choisie ci-dessus — choisissez d'abord vos 4 styles, ou collez un message qui inclut son propre en-tête.",
     header_line: "En-tête → {{header}}",
+    header_grid_only: "grille {{god}}",
+    header_diamond_only: "losange {{god}}",
+    header_whole_god: "{{god}} (grille + losange)",
+    header_seed: "graine « {{seed}} »",
     couldnt_derive_key: "Impossible de déduire une clé de cet en-tête : {{msg}}",
-    unknown_god_code_error: "code de dieu-bloc inconnu dans l'en-tête",
-    mood_punct_display: "Humeur : {{mood}}   ·   Ponctuation : {{punct}}",
+    unknown_god_code_error: "code ou nom de dieu inconnu dans l'en-tête",
+    incomplete_header_error: "un en-tête doit nommer 2 styles grille et 2 styles losange",
+    mood_label_short: "Humeur",
+    punct_label_short: "Ponctuation",
     copy_nothing_yet: "Rien encore",
     copy_copied: "Copié !",
     copy_failed: "Échec de la copie",
@@ -902,11 +958,95 @@ const CODE_TO_GOD = Object.fromEntries(
   Object.entries(GOD_CODES).flatMap(([god, codes]) => codes.map(code => [code, god]))
 );
 
-function godRefCode(gridGod, diamondGod) {
-  if (gridGod === diamondGod) return GOD_CODES[gridGod][0];
-  return `${GOD_CODES[gridGod][0]}.${GOD_CODES[diamondGod][1]}`;
+// Accent-stripped god names, the form the header writes ("Dolos", "Ate")
+// so it stays plain ASCII however it's typed or pasted. Same folding
+// encode() does, spelled out separately because this map is built at load
+// time, before foldForCipher's tables exist.
+function asciiName(label) { return label.normalize("NFD").replace(/\p{Diacritic}/gu, ""); }
+const NAME_TO_GOD = Object.fromEntries(
+  GODS.map(([id, label]) => [asciiName(label).toLowerCase(), id])
+);
+
+// The canonical order of one set of picks, shared by the key, the four
+// selection boxes and the header so all three describe the same thing
+// (see normalizeSelection): a god filling a grid slot AND a diamond slot
+// is a "godblock" and goes last with its two halves on the same index,
+// independent picks keep their order in front. Without it the header
+// couldn't say which grid slot a god sits in, and two different keys
+// could share one header.
+function canonicalOrder(grid9Gods, diamond4Gods) {
+  const blocks = grid9Gods.filter(g => diamond4Gods.includes(g));
+  return [
+    [...grid9Gods.filter(g => !blocks.includes(g)), ...blocks],
+    [...diamond4Gods.filter(g => !blocks.includes(g)), ...blocks],
+  ];
 }
-function parseGodRef(ref) {
+
+// The header's cipher field: one dot-joined list covering all 4 picks --
+// a godblock written once as its NAME (it is that whole god), every other
+// pick as its 2-digit code, grid code then diamond code per slot. So codes
+// always precede names, and the list is always 2 or 4 tokens, never 1 or 3.
+//
+// It reads back unambiguously because a code carries its own segment: the
+// 14 grid codes {10,20,...,65} and 14 diamond codes {11,22,...,56} are
+// disjoint, so each token says which list it joins, and its position in
+// that list is its slot.
+function cipherField(grid9Gods, diamond4Gods) {
+  const [grid, diamond] = canonicalOrder(grid9Gods, diamond4Gods);
+  const codes = [], names = [];
+  for (let i = 0; i < 2; i++) {
+    if (grid[i] === diamond[i]) names.push(asciiName(GOD_LABEL[grid[i]]));
+    else codes.push(GOD_CODES[grid[i]][0], GOD_CODES[diamond[i]][1]);
+  }
+  return [...codes, ...names].join(".");
+}
+
+// Reverse of cipherField -> [grid9Gods, diamond4Gods], already in
+// canonical order (names last land last in both lists).
+function parseCipherField(field) {
+  const grid = [], diamond = [];
+  for (const raw of field.split(".")) {
+    const tok = raw.trim();
+    const named = NAME_TO_GOD[asciiName(tok).toLowerCase()];
+    if (named) { grid.push(named); diamond.push(named); continue; }
+    const god = CODE_TO_GOD[tok];
+    if (!god) throw new Error(t("unknown_god_code_error"));
+    (GOD_CODES[god][0] === tok ? grid : diamond).push(god);
+  }
+  if (grid.length !== 2 || diamond.length !== 2) throw new Error(t("incomplete_header_error"));
+  return [grid, diamond];
+}
+// Is this text a cipher field at all? Used to tell a real header line from
+// an ordinary first line of coded body, before committing to parsing it.
+function looksLikeCipherField(field) {
+  try { parseCipherField(field); return true; } catch { return false; }
+}
+
+// A plain-language reading of the same field, printed under the header so
+// nothing about the key is left to code-table lookup.
+function cipherFieldSummary(grid9Gods, diamond4Gods, seed) {
+  const [grid, diamond] = canonicalOrder(grid9Gods, diamond4Gods);
+  const parts = [];
+  for (let i = 0; i < 2; i++) {
+    if (grid[i] === diamond[i]) parts.push(t("header_whole_god", { god: GOD_LABEL[grid[i]] }));
+    else parts.push(t("header_grid_only", { god: GOD_LABEL[grid[i]] }),
+                    t("header_diamond_only", { god: GOD_LABEL[diamond[i]] }));
+  }
+  return [...parts, t("header_seed", { seed })].join("   ·   ");
+}
+
+// Derive a full key straight from a message's own header -- no need for
+// the selected slots to match, or even be filled in at all.
+function keyFromHeader(field, seed) {
+  const [grid, diamond] = parseCipherField(field);
+  return generateKey(grid, diamond, seed);
+}
+
+// Messages written before the header became one dot-joined field used two
+// separate slotA/slotB fields, each either a single "godblock" code or a
+// dot-joined grid.diamond pair. Kept read-only (nothing writes this form
+// any more) so anything already sent still decodes.
+function parseLegacyGodRef(ref) {
   if (ref.includes(".")) {
     const [gridCode, diamondCode] = ref.split(".");
     return [CODE_TO_GOD[gridCode], CODE_TO_GOD[diamondCode]];
@@ -914,14 +1054,11 @@ function parseGodRef(ref) {
   const god = CODE_TO_GOD[ref];
   return [god, god];
 }
-
-// Derive a full key straight from a message's own header -- no need for
-// the selected slots to match, or even be filled in at all.
-function keyFromHeader(slotA, slotB, seed) {
-  const [g0, d0] = parseGodRef(slotA);
-  const [g1, d1] = parseGodRef(slotB);
+function keyFromLegacyHeader(slotA, slotB, seed) {
+  const [g0, d0] = parseLegacyGodRef(slotA);
+  const [g1, d1] = parseLegacyGodRef(slotB);
   if (!g0 || !d0 || !g1 || !d1) throw new Error(t("unknown_god_code_error"));
-  return generateKey([g0, g1], [d0, d1], seed);
+  return generateKey([g0, g1], [d0, d1], seed, false);
 }
 
 const GRID9_POS = [1,2,3,4,5,6,7,8,9];
@@ -1011,7 +1148,12 @@ function seededRng(seedStr) {
   };
 }
 
-function generateKey(grid9Names, diamond4Names, seed) {
+// `canonical` puts the picks in the order the header writes them (see
+// canonicalOrder), so a header always rebuilds exactly this key. Only the
+// legacy header reader passes false: its grammar recorded the slot order
+// itself, so re-ordering would decode already-sent messages into garbage.
+function generateKey(grid9Names, diamond4Names, seed, canonical = true) {
+  if (canonical) [grid9Names, diamond4Names] = canonicalOrder(grid9Names, diamond4Names);
   seed = seed || String(Math.floor(Math.random() * 1e9));
   const rng = seededRng(seed);
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -1103,12 +1245,11 @@ function glyphImg(seg, which, pos, key, cls = "glyph") {
 }
 
 // A literal text cell (not a glyph) -- used for pass-through punctuation
-// inside a coded token stream, and for the mood/punctuation tags framing
-// the encoded result. Built with textContent (never innerHTML) since this
-// carries raw user-typed text.
-function litCell(text, tag = false) {
+// and digits inside a coded token stream. Built with textContent (never
+// innerHTML) since this carries raw user-typed text.
+function litCell(text) {
   const cell = document.createElement("div");
-  cell.className = tag ? "cell tag-cell" : "cell";
+  cell.className = "cell";
   const span = document.createElement("span");
   span.className = "lit";
   span.textContent = text;
@@ -1150,14 +1291,23 @@ function renderGlyphStream(tokens, key, container, onRemove) {
   });
 }
 
-// Renders the coded body, then frames it with the mood tag (front) and
-// punctuation (back) as distinct "tag" cells -- display only, doesn't
-// change lastWriteCoded (still just the coded body, used for copy/decode).
-function renderWriteResult(coded, mood, punct, key, container) {
-  renderGlyphStream(coded.split(/\s+/).filter(Boolean), key, container);
-  if (container.querySelector(".empty-hint") && !mood && !punct) return;
-  if (mood) container.insertBefore(litCell(mood, true), container.firstChild);
-  if (punct) container.appendChild(litCell(punct, true));
+// The one and only way mood/punctuation are ever displayed: a labelled row
+// under the result, in Write and Read alike, "—" for an unset field. They
+// used to be cells at the two ends of the glyph stream, which read as part
+// of the ciphertext and had nowhere to appear at all on the Read side.
+function renderTagRow(container, mood, punct) {
+  container.innerHTML = "";
+  for (const [labelKey, value] of [["mood_label_short", mood], ["punct_label_short", punct]]) {
+    const item = document.createElement("div");
+    const label = document.createElement("span");
+    label.className = "tag-label";
+    label.textContent = t(labelKey);
+    const val = document.createElement("span");
+    val.className = "tag-value" + (value ? "" : " empty");
+    val.textContent = value || "—";
+    item.append(label, val);
+    container.appendChild(item);
+  }
 }
 
 // `onClick(seg, which, pos)`, when given, turns every cell into a button
@@ -1206,8 +1356,6 @@ const SAMPLE_MESSAGES = [
   "Hermes never tells the truth", "Find me in the shadows",
   "Say nothing to Ate", "The lie was kinder than the truth",
 ];
-const SAMPLE_MOODS = [":)", ":c", ":D", "<3", "-_-", ":P", ":o"];
-const SAMPLE_PUNCT = ["!", "?", "...", "!!", "?!"];
 
 // ============================================================================
 // In-browser font generator: builds a real, installable .ttf from the
@@ -1354,16 +1502,18 @@ const IMG_GAP = 8;
 const IMG_PAD = 14;
 const IMG_MAX_WIDTH = 900;
 const IMG_FONT = "600 20px ui-sans-serif, system-ui, sans-serif";
+const IMG_CAPTION_H = 38;
+const IMG_CAPTION_FONT = "600 16px ui-sans-serif, system-ui, sans-serif";
 
-// Renders the current encoded result (same tokens renderGlyphStream shows
-// on screen, same mood-first/punct-last order renderWriteResult uses) to
-// an offscreen canvas built entirely from vector paths and fillText -- no
-// <img>, so toBlob()/toDataURL() stay untainted (see drawGlyphPath above).
-// Used by both the "copy image" and "download image" buttons.
+// Renders the current encoded result (the same tokens renderGlyphStream
+// shows on screen) to an offscreen canvas built entirely from vector paths
+// and fillText -- no <img>, so toBlob()/toDataURL() stay untainted (see
+// drawGlyphPath above). Used by both the "copy image" and "download image"
+// buttons. Mood/punctuation are a caption line under the symbols, the same
+// envelope-not-ciphertext role .tag-row gives them on screen.
 function buildEncodedImageCanvas(coded, mood, punct, key) {
   const tokens = coded.split(/\s+/).filter(Boolean);
   const items = [];
-  if (mood) items.push({ type: "text", text: mood });
   for (const tok of tokens) {
     if (tok === "/") { items.push({ type: "space" }); continue; }
     if (/^[GD]/i.test(tok) && tok.length >= 2) {
@@ -1375,7 +1525,6 @@ function buildEncodedImageCanvas(coded, mood, punct, key) {
     }
     items.push({ type: "text", text: tok });
   }
-  if (punct) items.push({ type: "text", text: punct });
 
   const measure = document.createElement("canvas").getContext("2d");
   measure.font = IMG_FONT;
@@ -1384,6 +1533,7 @@ function buildEncodedImageCanvas(coded, mood, punct, key) {
     if (item.type === "space") return { ...item, w: IMG_CELL / 2 };
     return { ...item, w: Math.max(IMG_CELL * 0.55, measure.measureText(item.text).width + 20) };
   });
+  measure.font = IMG_CAPTION_FONT;
 
   // wrap into rows the same way the on-screen flex-wrap glyph-stream
   // does, just computed up front since a canvas can't reflow after draw
@@ -1398,9 +1548,22 @@ function buildEncodedImageCanvas(coded, mood, punct, key) {
     rowW += cell.w + IMG_GAP;
   }
 
+  // The mood/punctuation caption: its own row of solid pills under the
+  // message, drawn only when at least one of the two is set (a picture
+  // captioned "Mood — · Punctuation —" would be noise). Pills, not plain
+  // text: decodeImageToTokens tells captions from symbols by their solid
+  // fill, so a bare text line would be read back as a row of stray marks.
+  const capCells = ((mood || punct)
+    ? [`${t("mood_label_short")} ${mood || "—"}`, `${t("punct_label_short")} ${punct || "—"}`]
+    : []
+  ).map(text => ({ text, w: measure.measureText(text).width + 24 }));
+  const capW = capCells.length
+    ? IMG_PAD * 2 + capCells.reduce((s, c) => s + c.w, 0) + IMG_GAP * (capCells.length - 1) : 0;
+
   const rowWidths = rows.map(r => IMG_PAD * 2 + r.reduce((s, c) => s + c.w, 0) + IMG_GAP * Math.max(0, r.length - 1));
-  const canvasW = Math.max(...rowWidths, IMG_CELL + IMG_PAD * 2);
-  const canvasH = IMG_PAD * 2 + rows.length * IMG_CELL + IMG_GAP * (rows.length - 1);
+  const canvasW = Math.max(...rowWidths, capW, IMG_CELL + IMG_PAD * 2);
+  const canvasH = IMG_PAD * 2 + rows.length * IMG_CELL + IMG_GAP * (rows.length - 1)
+    + (capCells.length ? IMG_CAPTION_H + IMG_GAP : 0);
 
   // read the page's own current theme colors (light or dark, whichever is
   // active) rather than hardcoding, so the exported image always matches
@@ -1451,6 +1614,18 @@ function buildEncodedImageCanvas(coded, mood, punct, key) {
       x += cell.w + IMG_GAP;
     }
     y += IMG_CELL + IMG_GAP;
+  }
+
+  if (capCells.length) {
+    ctx.font = IMG_CAPTION_FONT;
+    let x = IMG_PAD;
+    for (const cell of capCells) {
+      ctx.fillStyle = colors.tag;
+      ctx.fillRect(x, y, cell.w, IMG_CAPTION_H);
+      ctx.fillStyle = colors.ink;
+      ctx.fillText(cell.text, x + cell.w / 2, y + IMG_CAPTION_H / 2 + 1);
+      x += cell.w + IMG_GAP;
+    }
   }
   return canvas;
 }
@@ -1943,6 +2118,22 @@ function createCipherPanel() {
   function chipFor(slot) { return document.querySelector(`.block-tile[data-target="${slot}"]`); }
   function captionFor(slot) { return document.querySelector(`.slot-caption[data-target="${slot}"]`); }
 
+  // Re-lay the 4 boxes in the header's own order (see canonicalOrder), so
+  // boxes, key and header always agree -- that's what lets the header
+  // write a whole god's NAME once instead of two codes without losing
+  // which slot anything sits in. Only runs on a complete selection:
+  // re-ordering a half-filled row would make tiles jump mid-choice.
+  function normalizeSelection() {
+    if (!SLOT_ORDER.every(s => selection[s])) return;
+    const [grid, diamond] = canonicalOrder(
+      [selection.g0, selection.g1], [selection.d0, selection.d1]);
+    [selection.g0, selection.g1] = grid;
+    [selection.d0, selection.d1] = diamond;
+    // Both rotations restart at slot 1, exactly where two clicks of each
+    // type would have left them anyway.
+    nextGrid = "g0"; nextDiamond = "d0";
+  }
+
   // The classic pigpen reference: 4 plain tiles (Hermès grid/diamond, Áte
   // grid/diamond) using the very same .block-tile box the selection slots
   // use, rather than the bordered 2-thumbnail "name card" the 12-god
@@ -1998,27 +2189,30 @@ function createCipherPanel() {
         </div>
         <div class="name">${label}</div>
       `;
-      card.querySelector(".g9").title = t("title_grid_style");
-      card.querySelector(".d4").title = t("title_diamond_style");
+      // Tooltips come from applyLanguage()'s data-i18n-title sweep, which
+      // runs after this panel is built and on every language switch.
       card.querySelector(".g9").onclick = () => assignByType("g", id);
       card.querySelector(".d4").onclick = () => assignByType("d", id);
       container.appendChild(card);
     }
   }
 
-  function refreshUI() {
-    // Classic-pigpen tiles: same "lit" tint the gallery thumbnails get, but
-    // applied to the tile itself since these have no surrounding card.
-    classicStrip.querySelectorAll(".classic-tile").forEach(btn => {
-      const tints = SLOT_ORDER
-        .filter(s => s[0] === btn.dataset.seg && selection[s] === btn.dataset.name)
-        .map(s => SLOT_TINTS[s]);
-      btn.classList.toggle("lit", tints.length > 0);
-      btn.style.background = tints.length ? blend(tints) : "";
-    });
+  // "lit" = this thumbnail is filling a slot: solid tint for one, a
+  // gradient when the same god fills both slots of that segment type.
+  // Used by the classic tiles and both gallery thumbnails alike.
+  function lightUp(el, prefix, name) {
+    const tints = SLOT_ORDER
+      .filter(s => s[0] === prefix && selection[s] === name)
+      .map(s => SLOT_TINTS[s]);
+    el.classList.toggle("lit", tints.length > 0);
+    el.style.background = tints.length ? blend(tints) : "";
+  }
 
-    const cards = [...otherGallery.children];
-    cards.forEach(card => {
+  function refreshUI() {
+    classicStrip.querySelectorAll(".classic-tile").forEach(
+      btn => lightUp(btn, btn.dataset.seg, btn.dataset.name));
+
+    [...otherGallery.children].forEach(card => {
       const id = card.dataset.name;
       card.querySelectorAll(".corner-tag").forEach(tag => tag.style.display = "none");
       const cardColors = [];
@@ -2028,29 +2222,11 @@ function createCipherPanel() {
           card.querySelector(`.corner-tag.${slot}`).style.display = "flex";
         }
       }
-      // Whole-card border: solid if this god fills exactly one slot, a
-      // gradient blend if it fills more (see blend() above).
-      if (cardColors.length === 0) {
-        card.style.borderColor = "";
-        card.style.borderImage = "";
-      } else if (cardColors.length === 1) {
-        card.style.borderImage = "";
-        card.style.borderColor = cardColors[0];
-      } else {
-        card.style.borderColor = "";
-        card.style.borderImage = `${blend(cardColors)} 1`;
-      }
-      // Per-thumbnail "lit" tint: grid and diamond each highlighted
-      // independently based on which of *their own* two slots (if any)
-      // this god is currently filling.
-      const gTints = SLOT_ORDER.filter(s => s[0] === "g" && selection[s] === id).map(s => SLOT_TINTS[s]);
-      const dTints = SLOT_ORDER.filter(s => s[0] === "d" && selection[s] === id).map(s => SLOT_TINTS[s]);
-      const g9btn = card.querySelector(".g9");
-      const d4btn = card.querySelector(".d4");
-      g9btn.classList.toggle("lit", gTints.length > 0);
-      g9btn.style.background = gTints.length ? blend(gTints) : "";
-      d4btn.classList.toggle("lit", dTints.length > 0);
-      d4btn.style.background = dTints.length ? blend(dTints) : "";
+      // Whole-card border: solid for one slot, a gradient blend for more.
+      card.style.borderColor = cardColors.length === 1 ? cardColors[0] : "";
+      card.style.borderImage = cardColors.length > 1 ? `${blend(cardColors)} 1` : "";
+      lightUp(card.querySelector(".g9"), "g", id);
+      lightUp(card.querySelector(".d4"), "d", id);
     });
     for (const slot of SLOT_ORDER) {
       const name = selection[slot];
@@ -2063,22 +2239,23 @@ function createCipherPanel() {
       if (name) {
         swatch.innerHTML = `<img src="${assetPath(name, seg, 'tile')}">`;
         chip.title = `${slotLabel} — ${GOD_LABEL[name] || name}`;
-        // A god's grid code and diamond code are two DIFFERENT numbers
-        // (e.g. Árnesis = 25 grid / 52 diamond) -- same-type duplicates
-        // can't happen anymore (assignByType blocks them), but this same
-        // god can still legitimately fill one grid slot *and* one
-        // diamond slot, which would otherwise show two unrelated-looking
-        // numbers with no visible link between them. Show the name in
-        // every slot this god occupies instead, whenever it's in more
-        // than one of the 4 -- not just the other slot of this same type.
-        const sharedElsewhere = SLOT_ORDER.some(s => s !== slot && selection[s] === name);
-        caption.textContent = sharedElsewhere ? (GOD_LABEL[name] || name) : GOD_CODES[name][seg === "grid9" ? 0 : 1];
-        caption.classList.toggle("duplicate", sharedElsewhere);
+        // Code AND name, always -- a god's grid and diamond codes are two
+        // DIFFERENT numbers (Árnesis = 25 grid / 52 diamond), so the code
+        // alone can't show one god filling two boxes, and the name alone
+        // hides the code you need to read a header. Nothing conditional:
+        // every box says the same two things, every time.
+        caption.innerHTML = "";
+        const codeEl = document.createElement("div");
+        codeEl.className = "slot-code";
+        codeEl.textContent = GOD_CODES[name][seg === "grid9" ? 0 : 1];
+        const nameEl = document.createElement("div");
+        nameEl.className = "slot-name";
+        nameEl.textContent = GOD_LABEL[name] || name;
+        caption.append(codeEl, nameEl);
       } else {
         swatch.innerHTML = "";
         chip.title = slotLabel;
-        caption.textContent = "";
-        caption.classList.remove("duplicate");
+        caption.innerHTML = "";
       }
     }
   }
@@ -2101,6 +2278,7 @@ function createCipherPanel() {
     }
     advanceSlotOfType(prefix);
     selection[slot] = name;
+    normalizeSelection();
     refreshUI();
     maybeAutoGenerate();
   }
@@ -2142,38 +2320,29 @@ function createCipherPanel() {
     if (onKeyReadyCb) onKeyReadyCb(currentKey);
   }
 
-  function maybeAutoGenerate() {
-    if (selection.g0 && selection.g1 && selection.d0 && selection.d1) {
-      const seed = seedInput.value.trim();
-      setKey(generateKey([selection.g0, selection.g1], [selection.d0, selection.d1], seed || null));
-    }
+  const allFilled = () => SLOT_ORDER.every(s => selection[s]);
+  // The one place a key is built from the picks: the seed box wins when
+  // it holds anything, otherwise generateKey rolls a random one.
+  function regenerate(seed = seedInput.value.trim()) {
+    setKey(generateKey([selection.g0, selection.g1], [selection.d0, selection.d1], seed || null));
   }
 
+  function maybeAutoGenerate() { if (allFilled()) regenerate(); }
+
   genBtn.onclick = () => {
-    if (!selection.g0 || !selection.g1 || !selection.d0 || !selection.d1) {
-      alert(t("alert_choose_4_slots"));
-      return;
-    }
-    const seed = seedInput.value.trim();
-    setKey(generateKey([selection.g0, selection.g1], [selection.d0, selection.d1], seed || null));
+    if (!allFilled()) { alert(t("alert_choose_4_slots")); return; }
+    regenerate();
   };
 
   seedWordBtn.onclick = () => {
-    const word = SEED_WORDS[Math.floor(Math.random() * SEED_WORDS.length)];
-    seedInput.value = word;
-    if (selection.g0 && selection.g1 && selection.d0 && selection.d1) {
-      setKey(generateKey([selection.g0, selection.g1], [selection.d0, selection.d1], word));
-    }
+    seedInput.value = SEED_WORDS[Math.floor(Math.random() * SEED_WORDS.length)];
+    if (allFilled()) regenerate();
   };
 
   downloadBtn.onclick = () => {
     if (!currentKey) { alert(t("alert_generate_key_first")); return; }
-    const blob = new Blob([JSON.stringify(currentKey, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `gods-lies-key-${currentKey.seed}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(new Blob([JSON.stringify(currentKey, null, 2)], { type: "application/json" }),
+                 `gods-lies-key-${currentKey.seed}.json`);
   };
 
   downloadFontBtn.onclick = () => {
@@ -2184,12 +2353,7 @@ function createCipherPanel() {
     // the (synchronous, if brief) build work blocks the main thread.
     setTimeout(() => {
       const bytes = buildFontFromKey(currentKey, `Gods Lies - ${currentKey.seed}`);
-      const blob = new Blob([bytes], { type: "font/ttf" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `gods-lies-font-${currentKey.seed}.ttf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(new Blob([bytes], { type: "font/ttf" }), `gods-lies-font-${currentKey.seed}.ttf`);
       downloadFontBtn.textContent = original;
     }, 30);
   };
@@ -2236,13 +2400,18 @@ let lastWriteFull = "";
 let lastWriteMood = "";
 let lastWritePunct = "";
 let lastWritePlainText = "";
+// Tracks "Encode has been pressed at least once since the last Clear" --
+// separately from lastWritePlainText, which is legitimately empty when an
+// empty message was encoded, and would then leave the result area frozen
+// on the old key's header.
+let hasWriteResult = false;
 
-// Seed the plaintext/mood/punctuation fields with a random sample so
-// there's something to Encode right away -- each field clears itself
-// the moment it's actually focused (not on every focus: only while it's
-// still that field's untouched sample, so tabbing back into a real
-// in-progress message/mood/punctuation never wipes it), independently
-// of the other two.
+// Seed the plaintext field with a random sample so there's something to
+// Encode right away -- cleared the first time it's actually focused (only
+// while still the untouched sample, so tabbing back into a real message
+// never wipes it). Mood and punctuation deliberately get no sample:
+// pre-filled values vanishing on focus was half of why those two fields
+// felt like they came and went.
 function seedSampleField(id, pool) {
   const el = document.getElementById(id);
   el.value = pool[Math.floor(Math.random() * pool.length)];
@@ -2252,30 +2421,58 @@ function seedSampleField(id, pool) {
   });
 }
 seedSampleField("write-plainText", SAMPLE_MESSAGES);
-seedSampleField("write-moodInput", SAMPLE_MOODS);
-seedSampleField("write-punctInput", SAMPLE_PUNCT);
+
+const writeGlyphsEl = document.getElementById("write-encodeGlyphs");
+const writeTagRowEl = document.getElementById("write-tagRow");
+const writeHeaderEl = document.getElementById("write-headerLine");
+const writeSummaryEl = document.getElementById("write-headerSummary");
+const writeFullTextEl = document.getElementById("write-fullTextOut");
+
+// Draws (or redraws) the whole Write result from the current key: glyph
+// stream, mood/punctuation row, header, its plain-language reading, and
+// the text box "Copy as codes" copies verbatim. One function for all of
+// it, so the parts can't drift out of step with each other or the key.
+function renderWriteResult(key) {
+  const coded = encode(lastWritePlainText, key);
+  lastWriteCoded = coded;
+  hasWriteResult = true;
+  renderGlyphStream(coded.split(/\s+/).filter(Boolean), key, writeGlyphsEl);
+  renderTagRow(writeTagRowEl, lastWriteMood, lastWritePunct);
+
+  const header = `${lastWriteMood}_${cipherField(key.grid9_gods, key.diamond4_gods)}_${key.seed}_${lastWritePunct}`;
+  lastWriteFull = `${header}\n${coded}`;
+  writeHeaderEl.textContent = t("header_line", { header });
+  writeSummaryEl.textContent = cipherFieldSummary(key.grid9_gods, key.diamond4_gods, key.seed);
+  writeFullTextEl.value = lastWriteFull;
+}
+
+// Wipes it back to "nothing written yet" when the key goes away -- every
+// glyph on screen was drawn from that key, and would otherwise sit there
+// describing a cipher that no longer exists.
+function resetWriteResult() {
+  lastWriteCoded = ""; lastWriteFull = ""; lastWritePlainText = "";
+  lastWriteMood = ""; lastWritePunct = ""; hasWriteResult = false;
+  renderGlyphStream([], null, writeGlyphsEl);
+  writeTagRowEl.innerHTML = "";
+  writeHeaderEl.textContent = "";
+  writeSummaryEl.textContent = "";
+  writeFullTextEl.value = "";
+}
 
 document.getElementById("write-encodeBtn").onclick = () => {
   const key = cipher.getKey();
   if (!key) { alert(t("alert_choose_4_styles")); return; }
   lastWritePlainText = document.getElementById("write-plainText").value;
-  const coded = encode(lastWritePlainText, key);
-  lastWriteCoded = coded;
   lastWriteMood = document.getElementById("write-moodInput").value.trim();
   lastWritePunct = document.getElementById("write-punctInput").value.trim();
-  renderWriteResult(coded, lastWriteMood, lastWritePunct, key, document.getElementById("write-encodeGlyphs"));
-
-  const slotA = godRefCode(key.grid9_gods[0], key.diamond4_gods[0]);
-  const slotB = godRefCode(key.grid9_gods[1], key.diamond4_gods[1]);
-  const header = `${lastWriteMood}_${slotA}_${slotB}_${key.seed}_${lastWritePunct}`;
-  lastWriteFull = `${header}\n${coded}\n#`;
-  document.getElementById("write-headerLine").textContent = t("header_line", { header });
-  document.getElementById("write-fullTextOut").value = lastWriteFull;
+  renderWriteResult(key);
 };
 
-wireCopy("write-copyGlyphsBtn", () => lastWriteCoded);
+// "Copy as codes" copies exactly what the text box below the result shows
+// (header + coded body) -- one text, one button, instead of the two
+// near-identical copy paths this used to have.
+wireCopy("write-copyGlyphsBtn", () => lastWriteFull);
 wireCopy("write-copyFontTextBtn", () => textToCipherFontText(lastWritePlainText));
-wireCopy("write-copyFullBtn", () => lastWriteFull);
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -2333,8 +2530,18 @@ cipher.setChartClickHandler((seg, which, pos) => {
   readDecodeSeq.push(slotCode(seg, which, pos));
   renderReadSequence();
 });
-cipher.onKeyReady(() => renderReadSequence());
-cipher.onClear(() => { readDecodeSeq = []; renderReadSequence(); });
+// A new/changed key re-draws what's already on screen: both the Write
+// result and the Read sequence are drawn from the key, so after a re-roll
+// they would otherwise keep showing the previous cipher's symbols.
+cipher.onKeyReady((key) => {
+  renderReadSequence();
+  if (hasWriteResult) renderWriteResult(key);
+});
+cipher.onClear(() => {
+  readDecodeSeq = [];
+  renderReadSequence();
+  resetWriteResult();
+});
 
 document.getElementById("read-spaceBtn").onclick = () => { readDecodeSeq.push("/"); renderReadSequence(); };
 document.getElementById("read-undoBtn").onclick = () => { readDecodeSeq.pop(); renderReadSequence(); };
@@ -2342,48 +2549,58 @@ document.getElementById("read-clearSeqBtn").onclick = () => { readDecodeSeq = []
 
 wireCopy("read-copyPlainBtn", () => document.getElementById("read-plainOut").value);
 
-let lastPasteMood = "", lastPasteVal = "";
+let lastPasteMood = "", lastPastePunct = "", lastPasteHadHeader = false;
+const pasteOutEl = document.getElementById("read-pasteOut");
+const pasteTagRowEl = document.getElementById("read-pasteMoodPunct");
 
 // --- Read: one paste box, header optional. If the first line parses as a
-// mood_slotA_slotB_seed_punctuation header, its own codes rebuild the key
-// (even a different one than what's selected above); otherwise the whole
-// paste is treated as coded body and decoded with the key selected above. ---
+// mood_cipherField_seed_punctuation header, its own codes/names rebuild the
+// key (even a different one than what's selected above); otherwise the whole
+// paste is treated as coded body and decoded with the key selected above.
+// A lone "#" line is still skipped -- messages written when this tool used
+// to append one still read fine, it just isn't written any more. ---
 document.getElementById("read-pasteBtn").onclick = () => {
-  const raw = document.getElementById("read-pasteIn").value;
-  const lines = raw.split("\n").map(l => l.trim()).filter(l => l && l !== "#");
+  const lines = document.getElementById("read-pasteIn").value
+    .split("\n").map(l => l.trim()).filter(l => l && l !== "#");
   if (!lines.length) { alert(t("alert_paste_first")); return; }
 
-  const headerParts = lines[0].split("_");
-  let mood = "", slotA = "", slotB = "", seed = "", punct = "", key = null, body = "";
-  const looksLikeHeader = headerParts.length === 5
-    && parseGodRef(headerParts[1])[0] && parseGodRef(headerParts[2])[0];
+  const parts = lines[0].split("_");
+  let mood = "", punct = "", key = null, body = "";
+  // 4 fields = current grammar, 5 = the older mood_slotA_slotB_seed_punct
+  // one. The two can never be confused: the count differs even when mood
+  // and punctuation are both empty.
+  const isHeader = (parts.length === 4 && looksLikeCipherField(parts[1]))
+    || (parts.length === 5 && parseLegacyGodRef(parts[1])[0] && parseLegacyGodRef(parts[2])[0]);
 
-  if (looksLikeHeader) {
-    [mood, slotA, slotB, seed, punct] = headerParts;
+  lastPasteHadHeader = isHeader;
+  if (isHeader) {
+    const seed = parts[parts.length - 2];
+    [mood, punct] = [parts[0], parts[parts.length - 1]];
     try {
-      key = keyFromHeader(slotA, slotB, seed);
+      key = parts.length === 4 ? keyFromHeader(parts[1], seed)
+                               : keyFromLegacyHeader(parts[1], parts[2], seed);
     } catch (e) {
-      document.getElementById("read-pasteOut").value = t("couldnt_derive_key", { msg: e.message });
-      document.getElementById("read-pasteMoodPunct").textContent = "";
+      pasteOutEl.value = t("couldnt_derive_key", { msg: e.message });
+      pasteTagRowEl.innerHTML = "";
+      lastPasteHadHeader = false;
       return;
     }
     body = lines.slice(1).join(" ");
   } else {
     key = cipher.getKey();
-    if (!key) {
-      alert(t("alert_no_header_no_key"));
-      return;
-    }
+    if (!key) { alert(t("alert_no_header_no_key")); return; }
     body = lines.join(" ");
   }
 
-  lastPasteMood = mood; lastPasteVal = punct;
-  document.getElementById("read-pasteOut").value = decode(body, key);
-  document.getElementById("read-pasteMoodPunct").textContent =
-    (mood || punct) ? t("mood_punct_display", { mood: mood || "—", punct: punct || "—" }) : "";
+  lastPasteMood = mood; lastPastePunct = punct;
+  pasteOutEl.value = decode(body, key);
+  // Only a header carries these two, so the row shows up exactly when the
+  // pasted message had one -- and then always, "—" included.
+  if (isHeader) renderTagRow(pasteTagRowEl, mood, punct);
+  else pasteTagRowEl.innerHTML = "";
 };
 
-wireCopy("read-copyPasteBtn", () => document.getElementById("read-pasteOut").value);
+wireCopy("read-copyPasteBtn", () => pasteOutEl.value);
 
 // --- Read: decode a message image (see decodeImageToTokens) ---
 const imageDrop = document.getElementById("read-imageDrop");
@@ -2473,11 +2690,12 @@ function applyLanguage(lang) {
 
   cipher.refreshLanguage();
   renderReadSequence();
-  if (lastWriteCoded || lastWriteMood || lastWritePunct) {
-    renderWriteResult(lastWriteCoded, lastWriteMood, lastWritePunct, cipher.getKey(), document.getElementById("write-encodeGlyphs"));
-  }
-  if (lastPasteMood || lastPasteVal) {
-    document.getElementById("read-pasteMoodPunct").textContent = t("mood_punct_display", { mood: lastPasteMood || "—", punct: lastPasteVal || "—" });
+  // Both guarded on the key still existing: after Clear there is nothing
+  // left to redraw these from, and asking for a glyph without a key throws.
+  const key = cipher.getKey();
+  if (key && hasWriteResult) renderWriteResult(key);
+  if (lastPasteHadHeader) {
+    renderTagRow(pasteTagRowEl, lastPasteMood, lastPastePunct);
   }
 }
 

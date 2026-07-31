@@ -123,13 +123,13 @@ cell/arm image is shown (chart, write/read results).
   live alphabet chart/key, used by both **Write** and **Read** below it
   (small tabs, not separate keys). Write encodes plaintext
   (mood/punctuation are plain optional fields next to it) straight to
-  symbols, with the full text version (header + codes) tucked behind a
-  "Show as text" arrow for copy-pasting elsewhere. Read's alphabet chart
-  doubles as the decode input — click each symbol you recognize, in
-  order — or paste a whole message to decode instead (its header, if
-  present, is optional: with one, its own god-block codes and seed
-  rebuild the key on the spot; without one, the key selected above is
-  used instead)
+  symbols, with the full text version (header + codes) shown in a box
+  right below — exactly what its "Copy as codes" button copies. Read's
+  alphabet chart doubles as the decode input — click each symbol you
+  recognize, in order — or paste a whole message to decode instead (its
+  header, if present, is optional: with one, its own codes/names and
+  seed rebuild the key on the spot; without one, the key selected above
+  is used instead)
 - `make_font.py` — builds a real, installable Windows `.ttf` font from a
   key file: type normally in any app and see the cipher symbols instead
   of A-Z. Also bakes `godslies.html`'s `GLYPH_CONTOURS` block
@@ -174,21 +174,23 @@ automatically. Accented letters (é, ç, ñ, ...) and common ligatures (œ,
 back returns the base letter, not the original accent.
 
 **Write**: type plaintext, optionally set a mood tag/punctuation right
-below it, and hit Encode — the result shows as symbols (mood and
-punctuation framed at each end), with a copy button next to it (copies
-the plain code text, since images can't be pasted as text elsewhere).
-The full message (header + codes) sits behind a "Show as text" arrow,
-also with its own copy button, for pasting into Read or anywhere else.
+below it, and hit Encode — the result shows as symbols, with the mood and
+punctuation on their own labelled row underneath (they're the envelope
+around the message, not part of the ciphertext, and they read the same
+way here, in Read, and in an exported image). Under that: the header, a
+plain-language reading of it, and the full message as text (header +
+codes) in a box — which is exactly what "Copy as codes" copies, for
+pasting into Read or anywhere else.
 
 **Read**: the alphabet chart (in "Your key") is the decode input — click
 each symbol you recognize there, in order, to rebuild the message (shown
 live below, with a copy button); "/ space", undo and clear help manage
 the sequence. Or expand "Paste a message to decode instead": one box
 handles a message with or without its own header — with one, its own
-god-block codes and seed rebuild the exact key needed (even a different
-one than what's currently selected, and its mood/punctuation are shown
-alongside the decoded text); without one, the key currently selected
-above is used instead.
+codes/names and seed rebuild the exact key needed (even a different one
+than what's currently selected, and its mood/punctuation are shown on the
+same labelled row under the decoded text that Write uses); without one,
+the key currently selected above is used instead.
 
 ## Custom font
 
@@ -252,7 +254,7 @@ python godslies.py generate --grid9 dolos daidalos --diamond4 arnesis loxias \
 python godslies.py encode keys/custom1.json "Hello World" --svg keys/message.svg
 python godslies.py decode keys/custom1.json "G5 G4 G3. / G9 G5. DW DN G9"
 
-# build the mood_slotA_slotB_seed_punctuation message format
+# build the mood_cipher_seed_punctuation message format
 # (see "Message format" below, and page 2 of Cryptographie & Symbole.pdf)
 python godslies.py message keys/custom1.json --mood ":c" --punct "!" \
   --text "Quel connard ce mec"
@@ -271,9 +273,8 @@ punctuation) passes through unciphered.
 ## Message format
 
 ```
-<mood>_<slotA>_<slotB>_<seed>_<punctuation>
+<mood>_<cipher>_<seed>_<punctuation>
 <enciphered body>
-#
 ```
 
 Corrected from an earlier misreading of page 1/2 of
@@ -298,26 +299,53 @@ styles were used, from a fixed per-god table (`GOD_CODES` in
 that same "round, memorable" spirit with digit-reversal pairs instead of
 the notebook's original plain-sequential tail.)
 
-`slotA` and `slotB` each cover one of the key's two (grid9, diamond4)
-pairs, and each can be written either as:
-- a single code (**godblock**) — that god's grid9 *and* diamond4 both
-  apply to this slot, e.g. `30` = Kólax for both
-- two codes dot-joined, `grid.diamond` (**mixed**) — independent gods,
-  e.g. `30.52` = Kólax's grid9 + Árnesis's diamond4
+`cipher` is **one dot-joined list covering all four picks**, written so
+nothing about the key is left out of it:
 
-covering all 4 combinations (godblock/godblock, mixed/mixed, and the two
-hybrids) with one grammar. `seed` is always the key's real seed (not a
-separate decorative field) — which means **the header alone can
-reconstruct the exact key needed to decode the message**, with no
-separately shared key file required, as long as `GOD_CODES` is known
-(it's fixed and built into both tools). `mood`/`punctuation` are the only
-two fields that stay purely free-text/contextual. `#` marks
-end-of-conversation (per your legend: "Fin de conversat.").
+- a god filling a grid9 slot **and** a diamond4 slot is that whole god,
+  so it's written once as its **name** — `Dolos` (plain ASCII, accents
+  dropped), not as two codes
+- every other pick is its own 2-digit code, grid code then diamond code
+  per slot — `65.44` = Léthe's grid9 + Loxías's diamond4
 
-`godslies.html`'s Write tab computes `slotA`/`slotB` and the seed straight
-from whatever key is currently set in its own picker — you never have to
-work the codes out by hand. Read's "paste a message" option derives the
-key straight from a pasted header when one's present, independent of
+so `65.44.Dolos` reads "Léthe's grid, Loxías's diamond, and Dólos for a
+whole grid+diamond of its own". Codes always come before names, and the
+list is always 2 or 4 tokens long — **never 1, never 3**.
+
+That reads back unambiguously because a code carries its own segment: the
+14 grid9 codes (`10 20 30 40 50 60 70 80 90 15 25 35 45 65`) and the 14
+diamond4 codes (`11 22 33 44 55 66 77 88 99 51 52 53 54 56`) are disjoint
+sets, so each token says which half it belongs to, and its position
+within that half is its slot. Both tools order the picks the same
+canonical way (independent picks first, whole gods last — `canonical_order`
+in `godslies.py`, `canonicalOrder` in `godslies.html`), which is also the
+order `godslies.html` settles its four selection boxes into once all of
+them are filled, so the boxes, the key and the header always agree.
+
+`seed` is always the key's real seed (not a separate decorative field) —
+which means **the header alone can reconstruct the exact key needed to
+decode the message**, with no separately shared key file required, as
+long as `GOD_CODES` is known (it's fixed and built into both tools).
+`mood`/`punctuation` are the only two fields that stay purely
+free-text/contextual; they ride along in plain text and are never
+enciphered.
+
+Neither tool writes a trailing `#` any more — it was a personal
+end-of-conversation mark from the notebook's legend ("Fin de
+conversat."), not something every message needs. Both readers still skip
+a lone `#` line, so anything written before still parses, and you can
+still type one yourself.
+
+Messages in the older `mood_slotA_slotB_seed_punctuation` form (five
+underscore-separated fields, each slot either a single code or a
+`grid.diamond` pair) are still read by both tools — the field count tells
+the two grammars apart, even when mood and punctuation are empty.
+
+`godslies.html`'s Write tab computes the whole header straight from
+whatever key is currently set in its own picker, and prints a
+plain-language reading of it underneath — you never have to work the
+codes out by hand. Read's "paste a message" option derives the key
+straight from a pasted header when one's present, independent of
 whatever's selected in Read's own picker.
 
 ## What happened to the old files in the Crypto folder

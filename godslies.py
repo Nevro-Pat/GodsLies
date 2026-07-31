@@ -33,6 +33,7 @@ import os
 import random
 import string
 import sys
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -175,12 +176,19 @@ class Key:
     slot_to_letter: dict = field(default_factory=dict)  # "G5" style code -> letter
 
     @classmethod
-    def generate(cls, grid9_gods, diamond4_gods, seed=None) -> "Key":
+    def generate(cls, grid9_gods, diamond4_gods, seed=None, canonical=True) -> "Key":
+        """`canonical` puts the picks in the order the header writes them
+        (see canonical_order), so a header always rebuilds exactly this
+        key. Only the legacy header reader passes False: its grammar
+        recorded the slot order itself, so re-ordering would decode
+        already-sent messages into garbage."""
         for g in (*grid9_gods, *diamond4_gods):
             if g not in GODS:
                 raise ValueError(f"Unknown god '{g}'. Choices: {', '.join(GODS)}")
         if len(grid9_gods) != 2 or len(diamond4_gods) != 2:
             raise ValueError("need exactly 2 grid9 gods and 2 diamond4 gods")
+        if canonical:
+            grid9_gods, diamond4_gods = canonical_order(grid9_gods, diamond4_gods)
         seed = str(seed) if seed is not None else str(random.randint(0, 10**9))
         rng = _seeded_rng(seed)
         letters = list(string.ascii_uppercase)
@@ -348,61 +356,135 @@ def alphabet_chart_svg(key: Key, out_path: Path) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Message-format helper: mood_slotA_slotB_seed_punctuation (see README).
-# slotA/slotB each identify one of the key's 2 (grid9, diamond4) pairs,
-# either as a single "godblock" code (that god's grid AND diamond both
-# apply) or as a dot-joined "grid.diamond" mixed pair (independent gods).
-# The header is self-sufficient: given just GOD_CODES (fixed/shared) plus
-# the header's slotA/slotB/seed, the full key can be reconstructed without
-# a separately saved key file -- seed is always the key's real seed, not
-# a decorative label.
+# Message-format helper: mood_cipher_seed_punctuation (see README).
+# The cipher field is one dot-joined list covering all 4 picks: a god
+# filling a grid slot AND a diamond slot is written once as its NAME (it
+# is that whole god), every other pick as its 2-digit code -- grid code
+# then diamond code, per slot, so codes always precede names and the list
+# is always 2 or 4 tokens, never 1 or 3.
+#
+# It reads back unambiguously because a code carries its own segment: the
+# 14 grid codes {10,20,...,65} and 14 diamond codes {11,22,...,56} are
+# disjoint, so each token says which list it joins and its position in
+# that list is its slot.
+#
+# The header is self-sufficient: GOD_CODES (fixed/shared) plus the cipher
+# field and seed rebuild the full key with no saved key file -- seed is
+# always the key's real seed, not a decorative label.
+#
+# Mirrors godslies.html's cipherField()/parseCipherField() -- keep in sync.
 # ---------------------------------------------------------------------------
 
-def god_ref_code(grid_god: str, diamond_god: str) -> str:
-    if grid_god == diamond_god:
-        return GOD_CODES[grid_god][0]
-    return f"{GOD_CODES[grid_god][0]}.{GOD_CODES[diamond_god][1]}"
+def _ascii_name(label: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", label)
+                   if not unicodedata.combining(c))
 
 
-def parse_god_ref(ref: str):
-    """Returns (grid_god, diamond_god). Either code in a "grid.diamond"
-    pair may be either of a god's two codes -- the code always resolves
-    to a god first, then the dot position decides its role here."""
-    if "." in ref:
-        grid_code, diamond_code = ref.split(".", 1)
-        return CODE_TO_GOD[grid_code], CODE_TO_GOD[diamond_code]
-    god = CODE_TO_GOD[ref]
-    return god, god
+NAME_TO_GOD = {_ascii_name(label).lower(): god for god, label in GOD_LABELS.items()}
 
 
-def key_from_header(slot_a: str, slot_b: str, seed: str) -> Key:
-    g0, d0 = parse_god_ref(slot_a)
-    g1, d1 = parse_god_ref(slot_b)
-    return Key.generate([g0, g1], [d0, d1], seed)
+def canonical_order(grid9_gods, diamond4_gods):
+    """The canonical order of one set of picks, shared by the key and the
+    header so both describe the same thing: a god filling a grid AND a
+    diamond slot (a "godblock") goes last with its two halves on the same
+    index, independent picks keep their order in front. Without it the
+    header couldn't say which grid slot a god sits in, and two different
+    keys could share one header."""
+    blocks = [g for g in grid9_gods if g in diamond4_gods]
+    return (
+        [g for g in grid9_gods if g not in blocks] + blocks,
+        [d for d in diamond4_gods if d not in blocks] + blocks,
+    )
+
+
+def cipher_field(grid9_gods, diamond4_gods) -> str:
+    grid, diamond = canonical_order(grid9_gods, diamond4_gods)
+    codes, names = [], []
+    for i in range(2):
+        if grid[i] == diamond[i]:
+            names.append(_ascii_name(GOD_LABELS[grid[i]]))
+        else:
+            codes += [GOD_CODES[grid[i]][0], GOD_CODES[diamond[i]][1]]
+    return ".".join(codes + names)
+
+
+def parse_cipher_field(field: str):
+    """Reverse of cipher_field() -> (grid9_gods, diamond4_gods), already in
+    canonical order (names last land last in both lists)."""
+    grid, diamond = [], []
+    for token in field.split("."):
+        token = token.strip()
+        named = NAME_TO_GOD.get(_ascii_name(token).lower())
+        if named:
+            grid.append(named)
+            diamond.append(named)
+            continue
+        god = CODE_TO_GOD.get(token)
+        if god is None:
+            raise ValueError(f"unknown god code or name in header: {token!r}")
+        (grid if GOD_CODES[god][0] == token else diamond).append(god)
+    if len(grid) != 2 or len(diamond) != 2:
+        raise ValueError("a header must name 2 grid styles and 2 diamond styles")
+    return grid, diamond
+
+
+def key_from_header(field: str, seed: str) -> Key:
+    grid, diamond = parse_cipher_field(field)
+    return Key.generate(grid, diamond, seed)
+
+
+def key_from_legacy_header(slot_a: str, slot_b: str, seed: str) -> Key:
+    """Messages written before the header became one dot-joined field used
+    two separate slotA/slotB fields, each either a single "godblock" code
+    or a dot-joined grid.diamond pair. Read-only: nothing writes this form
+    any more, but anything already sent still decodes."""
+    def parse_ref(ref):
+        if "." in ref:
+            grid_code, diamond_code = ref.split(".", 1)
+            return CODE_TO_GOD[grid_code], CODE_TO_GOD[diamond_code]
+        god = CODE_TO_GOD[ref]
+        return god, god
+
+    g0, d0 = parse_ref(slot_a)
+    g1, d1 = parse_ref(slot_b)
+    return Key.generate([g0, g1], [d0, d1], seed, canonical=False)
 
 
 def compose_message(mood: str, punctuation: str, secret_text: str, key: Key) -> dict:
-    slot_a = god_ref_code(key.grid9_gods[0], key.diamond4_gods[0])
-    slot_b = god_ref_code(key.grid9_gods[1], key.diamond4_gods[1])
-    header = f"{mood}_{slot_a}_{slot_b}_{key.seed}_{punctuation}"
+    header = f"{mood}_{cipher_field(key.grid9_gods, key.diamond4_gods)}_{key.seed}_{punctuation}"
     cipher = encode(secret_text, key)
-    return {"header": header, "cipher": cipher, "full": f"{header}\n{cipher}\n#"}
+    return {"header": header, "cipher": cipher, "full": f"{header}\n{cipher}"}
 
 
 def parse_message(message: str, key: Key = None) -> dict:
-    """If `key` is omitted, it's derived straight from the header's
-    slotA/slotB god-block codes and seed -- no separately saved key file
-    needed, as long as GOD_CODES is shared/known (see README)."""
+    """If `key` is omitted, it's derived straight from the header's cipher
+    field and seed -- no separately saved key file needed, as long as
+    GOD_CODES is shared/known (see README). A lone "#" line is skipped:
+    messages written when this tool used to append one still read fine, it
+    just isn't written any more."""
     lines = [l for l in message.splitlines() if l.strip() and l.strip() != "#"]
     if not lines:
         raise ValueError("empty message")
     header = lines[0]
     body = " ".join(lines[1:])
-    mood, slot_a, slot_b, seed, punctuation = header.split("_", 4)
-    parsed_header = {"mood": mood, "slot_a": slot_a, "slot_b": slot_b,
-                      "seed": seed, "punctuation": punctuation}
-    if key is None:
-        key = key_from_header(slot_a, slot_b, seed)
+    parts = header.split("_")
+    # 4 fields = current grammar, 5 = the older mood_slotA_slotB_seed_punct
+    # one. The two can't be confused: the count differs even when mood and
+    # punctuation are both empty.
+    if len(parts) == 5:
+        mood, slot_a, slot_b, seed, punctuation = parts
+        parsed_header = {"mood": mood, "cipher_field": f"{slot_a}_{slot_b}",
+                         "seed": seed, "punctuation": punctuation}
+        if key is None:
+            key = key_from_legacy_header(slot_a, slot_b, seed)
+    elif len(parts) == 4:
+        mood, field, seed, punctuation = parts
+        parsed_header = {"mood": mood, "cipher_field": field,
+                         "seed": seed, "punctuation": punctuation}
+        if key is None:
+            key = key_from_header(field, seed)
+    else:
+        raise ValueError("not a message header: expected mood_cipher_seed_punctuation")
     return {"header": parsed_header, "plaintext": decode(body, key)}
 
 
@@ -484,7 +566,7 @@ def main(argv=None):
     d.add_argument("codes", help="space-separated code string, e.g. 'G5 D2. /'")
     d.set_defaults(func=_cmd_decode)
 
-    m = sub.add_parser("message", help="build a full mood_slotA_slotB_seed_punctuation message")
+    m = sub.add_parser("message", help="build a full mood_cipher_seed_punctuation message")
     m.add_argument("key", help="path to a key JSON file")
     m.add_argument("--mood", default="")
     m.add_argument("--punct", default="")
@@ -494,7 +576,7 @@ def main(argv=None):
     pa = sub.add_parser("parse", help="parse a composed message file back apart")
     pa.add_argument("file")
     pa.add_argument("--key", help="path to a key JSON file; omit to derive the key "
-                                  "straight from the header's slotA/slotB codes + seed")
+                                  "straight from the header's own codes/names + seed")
     pa.set_defaults(func=_cmd_parse)
 
     lg = sub.add_parser("gods", help="list available god ids")
