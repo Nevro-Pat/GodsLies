@@ -149,49 +149,45 @@
   .tabpanel { display: none; }
   .tabpanel.active { display: block; }
 
-  /* --- godblocks: each pairs one grid slot + one diamond slot, mirroring
-     the "godblock" reference codes (slotA/slotB) the message header
-     already uses -- a pure display of the current selection, filled by
-     clicking gallery tiles below (grid/diamond cycle independently). --- */
-  .godblock-row { display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
-  /* Only the separator should stretch to the row's full height (it's a
-     divider); everything else sizes to its own content -- align-items:
-     stretch on the row itself used to balloon Block A/B and the Clear
-     button up to match the classic-pigpen column's height, leaving them
-     mostly empty. */
-  .godblock-row > .clear-selection-btn {
-    writing-mode: vertical-rl; align-self: stretch;
-    padding: .5rem .4rem; font-size: .78rem; letter-spacing: .03em;
-  }
-  .godblock-group { display: flex; gap: .7rem; flex-wrap: wrap; }
-  .godblock {
-    border: 2px solid var(--border); border-radius: 10px; padding: .6rem;
-    display: flex; flex-direction: column; gap: .45rem; background: var(--bg);
-  }
-  /* Same treatment as .classic-label below -- one consistent "section
-     label" style everywhere instead of a smaller/quieter one just here. */
-  .godblock .block-label {
-    font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
-    color: var(--accent); text-align: center; font-family: ui-sans-serif, system-ui, sans-serif;
-  }
-  .godblock .block-tiles { display: flex; gap: .4rem; }
+  /* --- slot boxes: 4 independent boxes (grid.1, diamond.1, grid.2,
+     diamond.2), each a pure display of the current selection for that
+     one slot, filled by clicking gallery tiles below (grid/diamond
+     cycle independently). Sized to match .name-card .thumbs button
+     below exactly -- same box, same glyph size -- rather than being
+     their own smaller/nested design, so a slot preview and a gallery
+     thumbnail read as the same kind of object. --- */
+  .godblock-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  .slot-boxes { display: flex; gap: .6rem; flex-wrap: wrap; }
   /* Icon-only: the god name and grid/diamond label used to be printed on
      every tile, which read as small and cluttered for what's meant to be
      a quick-glance preview -- the glyph shape itself (a 3x3 grid vs. a
      diamond) already tells grid from diamond, same as the gallery
      thumbnails below never carry that label either. Full detail is still
      available via the title tooltip (see refreshUI()). */
+  /* 104px = .name-card .thumbs button's true rendered footprint: that
+     button resets with all:unset, which (unlike everything else on the
+     page) falls back to content-box, so its 100px + 2px border each
+     side renders at 104px total -- matched here so the two are pixel-
+     identical, not just nominally "both 100px". */
   .block-tile {
-    flex: 1; min-width: 64px; border: 2px solid var(--border); border-radius: 8px;
-    padding: .5rem; display: flex; align-items: center; justify-content: center;
+    width: 104px; height: 104px; border: 2px solid var(--border); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
     background: var(--bg-card); transition: border-color .12s ease, background .12s ease;
   }
   .block-tile.filled[data-target="g0"] { background: rgba(168,98,31,.16); border-color: #a8621f; }
   .block-tile.filled[data-target="g1"] { background: rgba(138,74,74,.16); border-color: #8a4a4a; }
   .block-tile.filled[data-target="d0"] { background: rgba(74,127,94,.16); border-color: #4a7f5e; }
   .block-tile.filled[data-target="d1"] { background: rgba(74,107,127,.16); border-color: #4a6b7f; }
-  .block-tile .swatch { width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; }
-  .block-tile .swatch img { width: 44px; height: 44px; }
+  .block-tile .swatch { width: 82px; height: 82px; display: flex; align-items: center; justify-content: center; }
+  .block-tile .swatch img { width: 82px; height: 82px; }
+  /* Only the separator should stretch to the row's full height (it's a
+     divider); everything else sizes to its own content -- align-items:
+     stretch on the row itself used to balloon the Clear button up to
+     match the classic-pigpen column's height, leaving it mostly empty. */
+  .godblock-row > .clear-selection-btn {
+    writing-mode: vertical-rl; align-self: stretch;
+    padding: .5rem .4rem; font-size: .78rem; letter-spacing: .03em;
+  }
 
   .separator { width: 2px; align-self: stretch; background: var(--border); }
   /* Fixed-size, not flex:1 -- it used to fill whatever space its siblings
@@ -347,21 +343,11 @@
 <p class="hint" data-i18n="cipher_hint"></p>
 
 <div class="godblock-row">
-  <div class="godblock-group">
-    <div class="godblock">
-      <div class="block-label" data-i18n="godblock_a"></div>
-      <div class="block-tiles">
-        <div class="block-tile" data-target="g0"><span class="swatch"></span></div>
-        <div class="block-tile" data-target="d0"><span class="swatch"></span></div>
-      </div>
-    </div>
-    <div class="godblock">
-      <div class="block-label" data-i18n="godblock_b"></div>
-      <div class="block-tiles">
-        <div class="block-tile" data-target="g1"><span class="swatch"></span></div>
-        <div class="block-tile" data-target="d1"><span class="swatch"></span></div>
-      </div>
-    </div>
+  <div class="slot-boxes">
+    <div class="block-tile" data-target="g0"><span class="swatch"></span></div>
+    <div class="block-tile" data-target="d0"><span class="swatch"></span></div>
+    <div class="block-tile" data-target="g1"><span class="swatch"></span></div>
+    <div class="block-tile" data-target="d1"><span class="swatch"></span></div>
   </div>
   <button class="secondary clear-selection-btn" data-i18n="clear_selection"></button>
   <div class="separator"></div>
@@ -489,7 +475,7 @@
 
 <script>
 // GENERATED by extract_assets.py -- do not hand-edit this block, it's overwritten on every extraction run.
-const FILL_MANIFEST = {"apate/diamond4_E":0.069,"apate/diamond4_N":0.138,"apate/diamond4_S":0.206,"apate/diamond4_W":0.206,"apate/grid9_1":0.675,"apate/grid9_2":0.675,"apate/grid9_3":0.688,"apate/grid9_4":0.675,"apate/grid9_5":0.688,"apate/grid9_6":0.688,"apate/grid9_7":0.675,"apate/grid9_8":0.688,"apate/grid9_9":0.688,"arnesis/diamond4_E":0.175,"arnesis/diamond4_N":0.181,"arnesis/diamond4_S":0.181,"arnesis/diamond4_W":0.181,"arnesis/grid9_1":0.631,"arnesis/grid9_2":0.538,"arnesis/grid9_3":0.631,"arnesis/grid9_4":0.538,"arnesis/grid9_5":0.631,"arnesis/grid9_6":0.538,"arnesis/grid9_7":0.631,"arnesis/grid9_8":0.538,"arnesis/grid9_9":0.631,"ate/diamond4_E":0.256,"ate/diamond4_N":0.25,"ate/diamond4_S":0.256,"ate/diamond4_W":0.256,"ate/grid9_1":0.769,"ate/grid9_2":0.856,"ate/grid9_3":0.769,"ate/grid9_4":0.875,"ate/grid9_5":0.875,"ate/grid9_6":0.875,"ate/grid9_7":0.762,"ate/grid9_8":0.869,"ate/grid9_9":0.762,"daidalos/diamond4_E":0.238,"daidalos/diamond4_N":0.231,"daidalos/diamond4_S":0.238,"daidalos/diamond4_W":0.231,"daidalos/grid9_1":0.675,"daidalos/grid9_2":0.681,"daidalos/grid9_3":0.669,"daidalos/grid9_4":0.688,"daidalos/grid9_5":0.462,"daidalos/grid9_6":0.662,"daidalos/grid9_7":0.662,"daidalos/grid9_8":0.675,"daidalos/grid9_9":0.65,"dolos/diamond4_E":0.231,"dolos/diamond4_N":0.231,"dolos/diamond4_S":0.238,"dolos/diamond4_W":0.231,"dolos/grid9_1":0.688,"dolos/grid9_2":0.681,"dolos/grid9_3":0.669,"dolos/grid9_4":0.7,"dolos/grid9_5":0.469,"dolos/grid9_6":0.681,"dolos/grid9_7":0.675,"dolos/grid9_8":0.688,"dolos/grid9_9":0.669,"hermes/diamond4_E":0.25,"hermes/diamond4_N":0.25,"hermes/diamond4_S":0.256,"hermes/diamond4_W":0.256,"hermes/grid9_1":0.781,"hermes/grid9_2":0.875,"hermes/grid9_3":0.781,"hermes/grid9_4":0.862,"hermes/grid9_5":0.875,"hermes/grid9_6":0.875,"hermes/grid9_7":0.775,"hermes/grid9_8":0.856,"hermes/grid9_9":0.762,"horkos/diamond4_E":0.225,"horkos/diamond4_N":0.231,"horkos/diamond4_S":0.225,"horkos/diamond4_W":0.225,"horkos/grid9_1":0.581,"horkos/grid9_2":0.688,"horkos/grid9_3":0.538,"horkos/grid9_4":0.688,"horkos/grid9_5":0.469,"horkos/grid9_6":0.675,"horkos/grid9_7":0.569,"horkos/grid9_8":0.688,"horkos/grid9_9":0.55,"kolax/diamond4_E":0.194,"kolax/diamond4_N":0.194,"kolax/diamond4_S":0.2,"kolax/diamond4_W":0.194,"kolax/grid9_1":0.662,"kolax/grid9_2":0.681,"kolax/grid9_3":0.681,"kolax/grid9_4":0.675,"kolax/grid9_5":0.525,"kolax/grid9_6":0.706,"kolax/grid9_7":0.675,"kolax/grid9_8":0.688,"kolax/grid9_9":0.694,"lethe/diamond4_E":0.256,"lethe/diamond4_N":0.256,"lethe/diamond4_S":0.256,"lethe/diamond4_W":0.256,"lethe/grid9_1":0.556,"lethe/grid9_2":0.556,"lethe/grid9_3":0.556,"lethe/grid9_4":0.556,"lethe/grid9_5":0.612,"lethe/grid9_6":0.556,"lethe/grid9_7":0.562,"lethe/grid9_8":0.562,"lethe/grid9_9":0.556,"limos/diamond4_E":0.262,"limos/diamond4_N":0.262,"limos/diamond4_S":0.262,"limos/diamond4_W":0.262,"limos/grid9_1":0.625,"limos/grid9_2":0.712,"limos/grid9_3":0.6,"limos/grid9_4":0.738,"limos/grid9_5":0.762,"limos/grid9_6":0.688,"limos/grid9_7":0.625,"limos/grid9_8":0.7,"limos/grid9_9":0.594,"lochos/diamond4_E":0.319,"lochos/diamond4_N":0.319,"lochos/diamond4_S":0.325,"lochos/diamond4_W":0.319,"lochos/grid9_1":0.538,"lochos/grid9_2":0.538,"lochos/grid9_3":0.531,"lochos/grid9_4":0.531,"lochos/grid9_5":0.612,"lochos/grid9_6":0.531,"lochos/grid9_7":0.538,"lochos/grid9_8":0.538,"lochos/grid9_9":0.531,"loxias/diamond4_E":0.194,"loxias/diamond4_N":0.194,"loxias/diamond4_S":0.194,"loxias/diamond4_W":0.194,"loxias/grid9_1":0.519,"loxias/grid9_2":0.581,"loxias/grid9_3":0.519,"loxias/grid9_4":0.581,"loxias/grid9_5":0.406,"loxias/grid9_6":0.588,"loxias/grid9_7":0.512,"loxias/grid9_8":0.588,"loxias/grid9_9":0.519,"mnemon/diamond4_E":0.25,"mnemon/diamond4_N":0.25,"mnemon/diamond4_S":0.25,"mnemon/diamond4_W":0.25,"mnemon/grid9_1":0.675,"mnemon/grid9_2":0.675,"mnemon/grid9_3":0.688,"mnemon/grid9_4":0.675,"mnemon/grid9_5":0.688,"mnemon/grid9_6":0.688,"mnemon/grid9_7":0.675,"mnemon/grid9_8":0.688,"mnemon/grid9_9":0.688,"phantasos/diamond4_E":0.319,"phantasos/diamond4_N":0.319,"phantasos/diamond4_S":0.325,"phantasos/diamond4_W":0.319,"phantasos/grid9_1":0.538,"phantasos/grid9_2":0.538,"phantasos/grid9_3":0.538,"phantasos/grid9_4":0.531,"phantasos/grid9_5":0.631,"phantasos/grid9_6":0.531,"phantasos/grid9_7":0.538,"phantasos/grid9_8":0.538,"phantasos/grid9_9":0.538};
+const FILL_MANIFEST = {"apate/diamond4_E":0.069,"apate/diamond4_N":0.138,"apate/diamond4_S":0.206,"apate/diamond4_W":0.206,"apate/grid9_1":0.675,"apate/grid9_2":0.675,"apate/grid9_3":0.688,"apate/grid9_4":0.675,"apate/grid9_5":0.688,"apate/grid9_6":0.688,"apate/grid9_7":0.675,"apate/grid9_8":0.688,"apate/grid9_9":0.688,"arnesis/diamond4_E":0.175,"arnesis/diamond4_N":0.181,"arnesis/diamond4_S":0.181,"arnesis/diamond4_W":0.181,"arnesis/grid9_1":0.631,"arnesis/grid9_2":0.538,"arnesis/grid9_3":0.631,"arnesis/grid9_4":0.538,"arnesis/grid9_5":0.631,"arnesis/grid9_6":0.538,"arnesis/grid9_7":0.631,"arnesis/grid9_8":0.538,"arnesis/grid9_9":0.631,"ate/diamond4_E":0.319,"ate/diamond4_N":0.325,"ate/diamond4_S":0.319,"ate/diamond4_W":0.319,"ate/grid9_1":0.769,"ate/grid9_2":0.856,"ate/grid9_3":0.769,"ate/grid9_4":0.875,"ate/grid9_5":0.875,"ate/grid9_6":0.875,"ate/grid9_7":0.762,"ate/grid9_8":0.869,"ate/grid9_9":0.762,"daidalos/diamond4_E":0.238,"daidalos/diamond4_N":0.231,"daidalos/diamond4_S":0.238,"daidalos/diamond4_W":0.231,"daidalos/grid9_1":0.675,"daidalos/grid9_2":0.681,"daidalos/grid9_3":0.669,"daidalos/grid9_4":0.688,"daidalos/grid9_5":0.462,"daidalos/grid9_6":0.662,"daidalos/grid9_7":0.662,"daidalos/grid9_8":0.675,"daidalos/grid9_9":0.65,"dolos/diamond4_E":0.231,"dolos/diamond4_N":0.231,"dolos/diamond4_S":0.238,"dolos/diamond4_W":0.231,"dolos/grid9_1":0.688,"dolos/grid9_2":0.681,"dolos/grid9_3":0.669,"dolos/grid9_4":0.7,"dolos/grid9_5":0.469,"dolos/grid9_6":0.681,"dolos/grid9_7":0.675,"dolos/grid9_8":0.688,"dolos/grid9_9":0.669,"hermes/diamond4_E":0.319,"hermes/diamond4_N":0.325,"hermes/diamond4_S":0.319,"hermes/diamond4_W":0.319,"hermes/grid9_1":0.781,"hermes/grid9_2":0.875,"hermes/grid9_3":0.781,"hermes/grid9_4":0.862,"hermes/grid9_5":0.875,"hermes/grid9_6":0.875,"hermes/grid9_7":0.775,"hermes/grid9_8":0.856,"hermes/grid9_9":0.762,"horkos/diamond4_E":0.225,"horkos/diamond4_N":0.231,"horkos/diamond4_S":0.225,"horkos/diamond4_W":0.225,"horkos/grid9_1":0.581,"horkos/grid9_2":0.688,"horkos/grid9_3":0.538,"horkos/grid9_4":0.688,"horkos/grid9_5":0.469,"horkos/grid9_6":0.675,"horkos/grid9_7":0.569,"horkos/grid9_8":0.688,"horkos/grid9_9":0.55,"kolax/diamond4_E":0.194,"kolax/diamond4_N":0.194,"kolax/diamond4_S":0.2,"kolax/diamond4_W":0.194,"kolax/grid9_1":0.662,"kolax/grid9_2":0.681,"kolax/grid9_3":0.681,"kolax/grid9_4":0.675,"kolax/grid9_5":0.525,"kolax/grid9_6":0.706,"kolax/grid9_7":0.675,"kolax/grid9_8":0.688,"kolax/grid9_9":0.694,"lethe/diamond4_E":0.256,"lethe/diamond4_N":0.256,"lethe/diamond4_S":0.256,"lethe/diamond4_W":0.256,"lethe/grid9_1":0.556,"lethe/grid9_2":0.556,"lethe/grid9_3":0.556,"lethe/grid9_4":0.556,"lethe/grid9_5":0.612,"lethe/grid9_6":0.556,"lethe/grid9_7":0.562,"lethe/grid9_8":0.562,"lethe/grid9_9":0.556,"limos/diamond4_E":0.262,"limos/diamond4_N":0.262,"limos/diamond4_S":0.262,"limos/diamond4_W":0.262,"limos/grid9_1":0.625,"limos/grid9_2":0.712,"limos/grid9_3":0.6,"limos/grid9_4":0.738,"limos/grid9_5":0.762,"limos/grid9_6":0.688,"limos/grid9_7":0.625,"limos/grid9_8":0.7,"limos/grid9_9":0.594,"lochos/diamond4_E":0.319,"lochos/diamond4_N":0.319,"lochos/diamond4_S":0.325,"lochos/diamond4_W":0.319,"lochos/grid9_1":0.538,"lochos/grid9_2":0.538,"lochos/grid9_3":0.531,"lochos/grid9_4":0.531,"lochos/grid9_5":0.612,"lochos/grid9_6":0.531,"lochos/grid9_7":0.538,"lochos/grid9_8":0.538,"lochos/grid9_9":0.531,"loxias/diamond4_E":0.194,"loxias/diamond4_N":0.194,"loxias/diamond4_S":0.194,"loxias/diamond4_W":0.194,"loxias/grid9_1":0.519,"loxias/grid9_2":0.581,"loxias/grid9_3":0.519,"loxias/grid9_4":0.581,"loxias/grid9_5":0.406,"loxias/grid9_6":0.588,"loxias/grid9_7":0.512,"loxias/grid9_8":0.588,"loxias/grid9_9":0.519,"mnemon/diamond4_E":0.25,"mnemon/diamond4_N":0.25,"mnemon/diamond4_S":0.25,"mnemon/diamond4_W":0.25,"mnemon/grid9_1":0.675,"mnemon/grid9_2":0.675,"mnemon/grid9_3":0.688,"mnemon/grid9_4":0.675,"mnemon/grid9_5":0.688,"mnemon/grid9_6":0.688,"mnemon/grid9_7":0.675,"mnemon/grid9_8":0.688,"mnemon/grid9_9":0.688,"phantasos/diamond4_E":0.319,"phantasos/diamond4_N":0.319,"phantasos/diamond4_S":0.325,"phantasos/diamond4_W":0.319,"phantasos/grid9_1":0.538,"phantasos/grid9_2":0.538,"phantasos/grid9_3":0.538,"phantasos/grid9_4":0.531,"phantasos/grid9_5":0.631,"phantasos/grid9_6":0.531,"phantasos/grid9_7":0.538,"phantasos/grid9_8":0.538,"phantasos/grid9_9":0.538};
 // END GENERATED
 
 // --- i18n: every user-facing string lives here, keyed the same in both
@@ -532,8 +518,6 @@ const STRINGS = {
     slot_grid2: "Grid · 2",
     slot_diamond1: "Diamond · 1",
     slot_diamond2: "Diamond · 2",
-    godblock_a: "Block A",
-    godblock_b: "Block B",
     clear_selection: "Clear",
     classic_label: "Classic pigpen",
 
@@ -622,8 +606,6 @@ const STRINGS = {
     slot_grid2: "Grille · 2",
     slot_diamond1: "Losange · 1",
     slot_diamond2: "Losange · 2",
-    godblock_a: "Bloc A",
-    godblock_b: "Bloc B",
     clear_selection: "Effacer",
     classic_label: "Pigpen classique",
 

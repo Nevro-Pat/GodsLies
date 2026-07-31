@@ -81,14 +81,21 @@ WHOLE_TILE_ROTATE_GRID9 = {"apate": 90}
 # -- confirmed against the user's own worked example).
 DERIVE_GRID9_FROM = {"mnemon": ("apate", 180)}
 
-# Hermès/Áte's own scanned diamond4 arms (an inward-pointing chevron "X")
-# read as awkward next to the rest of the set. Swapped for Phántasos'/
-# Lóchos' outward-corner ornament style instead -- same plain/dotted
-# pairing as before (Phántasos has no dots like Hermès, Lóchos has dots
-# like Áte) -- with each arm rotated 45° in place so the mark reads as a
-# diagonal wedge (matching a classic pigpen "X" grid's cell shape)
-# instead of pointing straight along its own N/E/S/W axis.
-DERIVE_DIAMOND4_FROM = {"hermes": ("phantasos", 45), "ate": ("lochos", 45)}
+# Hermès/Áte's own scanned diamond4 arms read as awkward next to the
+# rest of the set. Swapped for Phántasos'/Lóchos' cleaner ornament style
+# instead -- same plain/dotted pairing as before (Phántasos has no dots
+# like Hermès, Lóchos has dots like Áte) -- but NOT a straight per-arm
+# swap: each arm is taken from the OPPOSITE compass position, unmodified
+# (no rotation). Phántasos/Lóchos' own arms point outward from center
+# (e.g. the North arm's mark points further up/out), which composes into
+# an outward-pointing "phantom square"; using each position's opposite
+# arm instead (North <- source's South, East <- source's West, etc.)
+# means a mark that pointed outward at its original position now points
+# back in toward the tile's center from across the tile, composing into
+# a proper inward cross instead -- confirmed against the user's own
+# worked example/reference image.
+DERIVE_DIAMOND4_FROM = {"hermes": "phantasos", "ate": "lochos"}
+OPPOSITE_DIAMOND4_DIRECTION = {"N": "S", "S": "N", "E": "W", "W": "E"}
 
 
 def strip_frame(tile: Image.Image) -> Image.Image:
@@ -385,10 +392,10 @@ def main():
             compose_grid9_tile(grid_cells).save(god_dir / "grid9_tile.png")
 
             if god in DERIVE_DIAMOND4_FROM:
-                source_god, extra_rot = DERIVE_DIAMOND4_FROM[god]
+                source_god = DERIVE_DIAMOND4_FROM[god]
                 diamond_cells = {
-                    direction: cell.rotate(extra_rot, resample=Image.BICUBIC, fillcolor=(0, 0, 0, 0))
-                    for direction, cell in diamond4_cells_by_god[source_god].items()
+                    direction: diamond4_cells_by_god[source_god][OPPOSITE_DIAMOND4_DIRECTION[direction]]
+                    for direction in DIAMOND4_POS
                 }
             else:
                 d_row = row_idx + 1
