@@ -2,7 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Gods Lies</title>
+<meta name="description" content="A pigpen-style substitution cipher: mix grid and diamond symbol sets into a private alphabet, then encode and decode messages entirely in your browser." />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Gods Lies" />
+<meta property="og:description" content="A pigpen-style substitution cipher: mix grid and diamond symbol sets into a private alphabet, then encode and decode messages entirely in your browser." />
+<meta name="theme-color" content="#f4ecdc" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#201a14" media="(prefers-color-scheme: dark)" />
+<!-- Self-contained favicon: the classic pigpen "#" divider mark (see
+     README's "Border cleanup" section), drawn inline so no extra asset
+     file is needed and it stays crisp at any size. Its own light/dark
+     media query mirrors the page's --accent colors. -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cstyle%3E.l%7Bstroke:%23a8621f%7D@media(prefers-color-scheme:dark)%7B.l%7Bstroke:%23d99a4e%7D%7D%3C/style%3E%3Cg class='l' stroke-width='3' stroke-linecap='round' fill='none'%3E%3Cline x1='11' y1='4' x2='11' y2='28'/%3E%3Cline x1='21' y1='4' x2='21' y2='28'/%3E%3Cline x1='4' y1='11' x2='28' y2='11'/%3E%3Cline x1='4' y1='21' x2='28' y2='21'/%3E%3C/g%3E%3C/svg%3E" />
+<script>
+  // Applied before first paint (this is a head script, so it blocks
+  // rendering) so a saved manual theme choice takes effect immediately --
+  // otherwise the page would flash the OS-default theme, then flip.
+  try {
+    var savedTheme = localStorage.getItem("godslies-theme");
+    if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+  } catch { /* localStorage unavailable (e.g. blocked) -- falls back to OS theme */ }
+</script>
 <style>
   :root {
     color-scheme: light dark;
@@ -47,9 +68,19 @@
   body {
     font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
     background: var(--bg); color: var(--ink);
-    max-width: 1080px; margin: 0 auto; padding: 2.2rem 1.4rem 4rem;
+    margin: 0; padding: 2.2rem 1.4rem 4rem;
     line-height: 1.5;
   }
+  /* --- width: the app used to sit in one fixed 1080px column everywhere,
+     which reads as small/static on a wide monitor. Ordinary prose/cards
+     stay in a fluid but capped column (.page-wrap); the god-picking tools
+     section (.tools-card) is allowed to breathe wider since it's a tile
+     grid that benefits from more columns, not a paragraph. Neither goes
+     truly edge-to-edge -- that broke line-length/readability. --- */
+  .page-wrap { max-width: clamp(1080px, 82vw, 1440px); margin: 0 auto; }
+  .tools-card { max-width: min(94vw, 1600px); margin: 0 auto 1.4rem; }
+
+  .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
   h1 {
     font-size: 2.1rem; margin: 0 0 .15rem; letter-spacing: .01em;
     font-variant: small-caps;
@@ -92,6 +123,8 @@
   button.secondary { background: transparent; color: var(--ink); border-color: var(--border); }
   button.secondary:hover { background: var(--accent-soft); }
   button.small { font-size: .78rem; padding: .3rem .6rem; }
+  .header-controls { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .lang-toggle, .theme-toggle { margin-top: 0; white-space: nowrap; }
   details > summary { cursor: pointer; color: var(--ink-soft); font-size: .85rem; margin: .6rem 0; }
   details[open] > summary { margin-bottom: .9rem; }
 
@@ -104,7 +137,7 @@
 
   img.glyph, img.tile-preview { filter: var(--glyph-filter); }
 
-  /* --- tabs (Write / Read run independently, each with its own key) --- */
+  /* --- tabs: now only used for the local Write/Read switch inside step 3 --- */
   .tabbar { display: flex; gap: .4rem; margin-bottom: 1.4rem; border-bottom: 2px solid var(--border); }
   .tabbtn {
     background: transparent; color: var(--ink-soft); border: 1px solid transparent; border-bottom: none;
@@ -116,48 +149,67 @@
   .tabpanel { display: none; }
   .tabpanel.active { display: block; }
 
-  /* --- slot picker summary strip --- */
-  .slot-summary { display: flex; gap: .7rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
-  .slot-chip {
-    flex: 1; min-width: 190px; border: 2px solid var(--border); border-radius: 10px;
-    padding: .7rem .9rem; display: flex; align-items: center; gap: .8rem;
-    background: var(--bg); cursor: pointer;
-    transition: border-color .12s ease, transform .1s ease, box-shadow .12s ease, background .12s ease;
+  /* --- godblocks: each pairs one grid slot + one diamond slot, mirroring
+     the "godblock" reference codes (slotA/slotB) the message header
+     already uses -- a pure display of the current selection, filled by
+     clicking gallery tiles below (grid/diamond cycle independently). --- */
+  .godblock-row { display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  /* Only the separator should stretch to the row's full height (it's a
+     divider); everything else sizes to its own content -- align-items:
+     stretch on the row itself used to balloon Block A/B and the Clear
+     button up to match the classic-pigpen column's height, leaving them
+     mostly empty. */
+  .godblock-row > .clear-selection-btn { align-self: center; min-width: 11rem; }
+  .godblock-group { display: flex; gap: .7rem; flex-wrap: wrap; }
+  .godblock {
+    border: 2px solid var(--border); border-radius: 10px; padding: .6rem;
+    display: flex; flex-direction: column; gap: .45rem; background: var(--bg);
   }
-  .slot-chip.active { transform: translateY(-1px); box-shadow: 0 0 0 2px var(--accent); }
-  /* Filled chips are tinted in their own slot's color (matches the corner-tag/
-     dot colors below) so which slot holds what is legible at a glance, not
-     just "active vs not". */
-  .slot-chip.filled[data-target="g0"] { background: rgba(168,98,31,.16); border-color: #a8621f; }
-  .slot-chip.filled[data-target="g1"] { background: rgba(138,74,74,.16); border-color: #8a4a4a; }
-  .slot-chip.filled[data-target="d0"] { background: rgba(74,127,94,.16); border-color: #4a7f5e; }
-  .slot-chip.filled[data-target="d1"] { background: rgba(74,107,127,.16); border-color: #4a6b7f; }
-  .slot-chip .swatch {
-    width: 64px; height: 64px; border-radius: 8px; background: var(--bg-card);
+  .godblock .block-label {
+    font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft);
+    text-align: center; font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .godblock .block-tiles { display: flex; gap: .4rem; }
+  .block-tile {
+    flex: 1; min-width: 96px; border: 2px solid var(--border); border-radius: 8px;
+    padding: .4rem .5rem; display: flex; align-items: center; gap: .5rem;
+    background: var(--bg-card); transition: border-color .12s ease, background .12s ease;
+  }
+  .block-tile.filled[data-target="g0"] { background: rgba(168,98,31,.16); border-color: #a8621f; }
+  .block-tile.filled[data-target="g1"] { background: rgba(138,74,74,.16); border-color: #8a4a4a; }
+  .block-tile.filled[data-target="d0"] { background: rgba(74,127,94,.16); border-color: #4a7f5e; }
+  .block-tile.filled[data-target="d1"] { background: rgba(74,107,127,.16); border-color: #4a6b7f; }
+  .block-tile .swatch {
+    width: 40px; height: 40px; border-radius: 6px; background: var(--bg-card);
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     border: 1px solid var(--border);
   }
-  .slot-chip .swatch img { width: 50px; height: 50px; }
-  .slot-chip .meta { font-size: .78rem; line-height: 1.3; display: flex; flex-direction: column; }
-  .slot-chip .meta .label { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); }
-  .slot-chip .meta .name { font-weight: 700; font-size: 1.05rem; }
-  .slot-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: .35rem; }
-  .dot-g0 { background: #a8621f; } .dot-g1 { background: #8a4a4a; }
-  .dot-d0 { background: #4a7f5e; } .dot-d1 { background: #4a6b7f; }
+  .block-tile .swatch img { width: 32px; height: 32px; }
+  .block-tile .meta { font-size: .7rem; line-height: 1.25; display: flex; flex-direction: column; min-width: 0; }
+  .block-tile .meta .label { font-size: .62rem; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); }
+  .block-tile .meta .name { font-weight: 700; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .separator { width: 2px; align-self: stretch; background: var(--border); }
+  /* Fixed-size, not flex:1 -- it used to fill whatever space its siblings
+     left over, so its width (and card sizes) silently depended on how
+     wide the Clear button's translated label happened to render. Always
+     holds exactly 2 cards, so a fixed track size keeps it identical
+     regardless of language. */
+  .classic-col { flex: 0 0 auto; max-width: 100%; }
+  .classic-col .classic-label {
+    font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--accent); margin-bottom: .6rem; font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  /* flex, not grid -- always exactly 2 fixed-size cards, and flex-wrap
+     lets them drop to a second line on a narrow viewport instead of a
+     grid's fixed tracks forcing horizontal overflow. */
+  .classic-col .gallery { display: flex; flex-wrap: wrap; }
+  .classic-col .gallery .name-card { flex: 0 0 auto; }
 
   /* --- gallery --- */
   .gallery {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .9rem;
   }
-  .classic-box {
-    border: 2px dashed var(--accent); border-radius: 12px; padding: 1rem;
-    margin-bottom: 1.2rem;
-  }
-  .classic-box .classic-label {
-    font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
-    color: var(--accent); margin-bottom: .7rem; font-family: ui-sans-serif, system-ui, sans-serif;
-  }
-  .classic-box .gallery { grid-template-columns: repeat(auto-fill, minmax(190px, 220px)); }
   .name-card {
     border: 2px solid var(--border); border-radius: 12px; padding: .75rem;
     text-align: center; background: var(--bg); position: relative;
@@ -197,7 +249,6 @@
     width: 58px; height: 74px; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 3px; background: var(--bg-card); border-radius: 6px; position: relative;
   }
-  .chart-grid .cell .letter { font-size: .72rem; color: var(--ink-soft); font-weight: 700; }
   .chart-grid img { max-width: 42px; max-height: 42px; }
   .chart-grid .cell.clickable { cursor: pointer; }
   .chart-grid .cell.clickable:hover { outline: 1px solid var(--accent); }
@@ -220,213 +271,439 @@
   .glyph-stream button.cell { border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; }
   .glyph-stream button.cell:hover { outline: 1px solid #b23; }
   .glyph-stream .empty-hint { color: var(--ink-soft); font-size: .85rem; padding: .4rem; }
+  /* mood/punct tags folded into the encoded-result stream: same family as a
+     literal pass-through cell, but tinted so they read as "framing" rather
+     than "part of the ciphertext". */
+  .glyph-stream .tag-cell { width: auto; min-width: 34px; padding: 0 8px; background: var(--accent-soft); }
+  .glyph-stream .tag-cell .lit { color: var(--accent); font-weight: 700; }
 
   .key-status {
     display: block; font-size: .9rem; color: var(--ink-soft); margin-top: .6rem;
     padding: .6rem .8rem; background: var(--bg); border-radius: 6px; border: 1px dashed var(--border);
   }
-  .key-status.ready { color: var(--accent); border-style: solid; border-color: var(--accent-soft); }
+  .key-status.ready { color: var(--ink); border-style: solid; border-color: var(--accent-soft); }
+  .key-status-title {
+    font-weight: 700; color: var(--accent); margin-bottom: .4rem; text-transform: uppercase;
+    letter-spacing: .04em; font-size: .78rem; font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .key-status-rows { display: flex; flex-direction: column; gap: .2rem; }
+  .key-status-row { display: flex; gap: .6rem; align-items: baseline; }
+  .key-status-label {
+    min-width: 4.5rem; color: var(--ink-soft); text-transform: uppercase; font-size: .68rem;
+    letter-spacing: .04em; font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .key-status-value { font-weight: 600; color: var(--ink); }
 
   footer { text-align: center; color: var(--ink-soft); font-size: .8rem; margin-top: 2.5rem; }
+  .footer-tagline { margin: 0 0 1.2rem; }
+  .footer-info {
+    max-width: 640px; margin: 0 auto 1.2rem; text-align: left;
+    border-top: 1px solid var(--border); padding-top: 1rem;
+  }
+  .footer-info details { margin-bottom: .5rem; }
+  .footer-info summary {
+    cursor: pointer; color: var(--ink); font-weight: 600; font-size: .82rem;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .footer-info p { margin: .5rem 0 0; line-height: 1.55; }
+  .footer-info a, .footer-links a { color: var(--accent); }
+  .footer-links { margin: 0; }
+  .footer-links a { color: var(--ink-soft); text-decoration: underline; }
+  .footer-links span { margin: 0 .4rem; }
 </style>
 </head>
 <body>
-<h1>Gods Lies</h1>
-<p class="tagline">A pigpen cipher drawn from fourteen small gods, each with their own way of lying —
-mix any two grid-shaped ciphers with any two diamond-shaped ciphers into your own private alphabet,
-then write and read in symbols.</p>
-
-<div class="tabbar">
-  <button class="tabbtn active" data-tab="write">Write</button>
-  <button class="tabbtn" data-tab="read">Read</button>
+<div class="page-wrap">
+  <div class="page-header">
+    <div>
+      <h1>Gods Lies</h1>
+      <p class="tagline" data-i18n="tagline"></p>
+    </div>
+    <div class="header-controls">
+      <button class="secondary theme-toggle" id="themeToggleBtn"></button>
+      <button class="secondary lang-toggle" id="langToggleBtn"></button>
+    </div>
+  </div>
 </div>
 
-<!-- ============================= WRITE ============================= -->
-<div class="tabpanel active" data-tab="write">
+<section class="card tools-card">
+<h2><span class="step-badge">1</span><span data-i18n="step_cipher"></span></h2>
+<p class="hint" data-i18n="cipher_hint"></p>
 
-  <div id="write-cipherRoot">
-  <section class="card">
-  <h2><span class="step-badge">1</span>Choose your cipher</h2>
-  <p class="hint">Click a slot below, then click a name's tile to fill it — filling one slot jumps you
-  to the next automatically (Grid&middot;1 → Grid&middot;2 → Diamond&middot;1 → Diamond&middot;2, then
-  stops). The colored corner on a tile shows every slot it's already filling. You can also click a slot
-  directly to target it, then click any name's tile to fill just that one. This key is used for
-  <strong>writing</strong> only — Read (other tab) has its own, so you can write and read with
-  different keys.</p>
-
-  <div class="slot-summary">
-    <div class="slot-chip active" data-target="g0"><span class="swatch"></span>
-      <span class="meta"><span class="label"><span class="slot-dot dot-g0"></span>Grid &middot; 1</span><span class="name">—</span></span></div>
-    <div class="slot-chip" data-target="g1"><span class="swatch"></span>
-      <span class="meta"><span class="label"><span class="slot-dot dot-g1"></span>Grid &middot; 2</span><span class="name">—</span></span></div>
-    <div class="slot-chip" data-target="d0"><span class="swatch"></span>
-      <span class="meta"><span class="label"><span class="slot-dot dot-d0"></span>Diamond &middot; 1</span><span class="name">—</span></span></div>
-    <div class="slot-chip" data-target="d1"><span class="swatch"></span>
-      <span class="meta"><span class="label"><span class="slot-dot dot-d1"></span>Diamond &middot; 2</span><span class="name">—</span></span></div>
+<div class="godblock-row">
+  <div class="godblock-group">
+    <div class="godblock">
+      <div class="block-label" data-i18n="godblock_a"></div>
+      <div class="block-tiles">
+        <div class="block-tile" data-target="g0"><span class="swatch"></span>
+          <span class="meta"><span class="label" data-i18n="slot_grid1"></span><span class="name">—</span></span></div>
+        <div class="block-tile" data-target="d0"><span class="swatch"></span>
+          <span class="meta"><span class="label" data-i18n="slot_diamond1"></span><span class="name">—</span></span></div>
+      </div>
+    </div>
+    <div class="godblock">
+      <div class="block-label" data-i18n="godblock_b"></div>
+      <div class="block-tiles">
+        <div class="block-tile" data-target="g1"><span class="swatch"></span>
+          <span class="meta"><span class="label" data-i18n="slot_grid2"></span><span class="name">—</span></span></div>
+        <div class="block-tile" data-target="d1"><span class="swatch"></span>
+          <span class="meta"><span class="label" data-i18n="slot_diamond2"></span><span class="name">—</span></span></div>
+      </div>
+    </div>
   </div>
-  <button class="secondary clear-selection-btn">Clear selection</button>
-
-  <div class="classic-box">
-    <div class="classic-label">Classic pigpen</div>
+  <button class="secondary clear-selection-btn" data-i18n="clear_selection"></button>
+  <div class="separator"></div>
+  <div class="classic-col">
+    <div class="classic-label" data-i18n="classic_label"></div>
     <div class="gallery classic-gallery"></div>
   </div>
+</div>
 
-  <div class="gallery other-gallery"></div>
-  </section>
+<div class="gallery other-gallery"></div>
+</section>
 
+<div class="page-wrap">
   <section class="card">
-  <h2><span class="step-badge">2</span>Your key</h2>
-  <p class="hint">Fills in automatically once all 4 slots above are chosen — this alphabet, seed, and
-  the download control below are all one thing: your key. Write below always uses whatever key is
-  currently set here.</p>
+  <h2><span class="step-badge">2</span><span data-i18n="step_key"></span></h2>
+  <p class="hint" data-i18n="key_hint"></p>
   <div class="row">
     <div>
-      <label>Seed (reuse it later to reproduce the same shuffle — also doubles as the message
-      header's seed word, see Write below)</label>
-      <input type="text" class="seed-input" placeholder="leave empty for a random alphabet" />
+      <label data-i18n="seed_label"></label>
+      <input type="text" class="seed-input" data-i18n-placeholder="seed_placeholder" />
     </div>
   </div>
   <div>
-    <button class="gen-btn">Regenerate with this seed</button>
-    <button class="secondary seed-word-btn">🎲 Suggest a word</button>
-    <button class="secondary download-key-btn">Download key</button>
+    <button class="gen-btn" data-i18n="regen_btn"></button>
+    <button class="secondary seed-word-btn" data-i18n="seed_word_btn"></button>
+    <button class="secondary download-key-btn" data-i18n="download_btn"></button>
   </div>
-  <span class="key-status">No key yet — choose 4 styles above.</span>
+  <div class="key-status" data-i18n="key_status_empty"></div>
   <div class="chart-grid chart-glyphs" style="margin-top:.9rem;"></div>
   </section>
-  </div>
 
   <section class="card">
-  <h2><span class="step-badge">3</span>Write</h2>
-  <label for="write-plainText">Plaintext</label>
-  <textarea id="write-plainText" placeholder="Type a message..."></textarea>
-  <div class="row">
-    <div><label for="write-moodInput">Mood tag (optional)</label><input type="text" id="write-moodInput" placeholder=":c" /></div>
-    <div><label for="write-punctInput">Punctuation (optional)</label><input type="text" id="write-punctInput" placeholder="!" /></div>
-  </div>
-  <p class="hint">Mood and punctuation are folded into the message header below, alongside your key's
-  god-block codes and seed — nothing to compute by hand.</p>
-  <button id="write-encodeBtn">Encode</button>
+  <h2><span class="step-badge">3</span><span data-i18n="step_message"></span></h2>
 
-  <div class="field-row" style="margin-top:.9rem;">
-    <label style="margin:0;">Encoded result</label>
-    <button class="small secondary" id="write-copyGlyphsBtn">📋 Copy as codes</button>
+  <div class="tabbar">
+    <button class="tabbtn active" data-tab="write" data-i18n="tab_write"></button>
+    <button class="tabbtn" data-tab="read" data-i18n="tab_read"></button>
   </div>
-  <div class="glyph-stream" id="write-encodeGlyphs"></div>
-  <div class="header-line" id="write-headerLine"></div>
 
-  <details>
-    <summary>Show as text (header + codes — for pasting into Read, or anywhere else)</summary>
-    <div class="field-row" style="justify-content:flex-end;">
-      <button class="small secondary" id="write-copyFullBtn">📋 Copy</button>
+  <div class="tabpanel active" data-tab="write">
+    <label for="write-plainText" data-i18n="plaintext_label"></label>
+    <textarea id="write-plainText" data-i18n-placeholder="plaintext_placeholder"></textarea>
+    <div class="row">
+      <div><label for="write-moodInput" data-i18n="mood_label"></label><input type="text" id="write-moodInput" placeholder=":c" /></div>
+      <div><label for="write-punctInput" data-i18n="punct_label"></label><input type="text" id="write-punctInput" placeholder="!" /></div>
     </div>
-    <textarea id="write-fullTextOut" class="mono" readonly style="min-height:5rem;"></textarea>
-  </details>
-  </section>
+    <p class="hint" data-i18n="write_mood_hint"></p>
+    <button id="write-encodeBtn" data-i18n="encode_btn"></button>
 
-</div>
-
-<!-- ============================= READ ============================= -->
-<div class="tabpanel" data-tab="read">
-
-  <div id="read-cipherRoot">
-  <section class="card">
-  <h2><span class="step-badge">1</span>Choose your cipher</h2>
-  <p class="hint">Click a slot below, then click a name's tile to fill it — filling one slot jumps you
-  to the next automatically (Grid&middot;1 → Grid&middot;2 → Diamond&middot;1 → Diamond&middot;2, then
-  stops). The colored corner on a tile shows every slot it's already filling. This key is used for
-  <strong>reading</strong> only — Write (other tab) has its own. You don't have to fill this in at all
-  if you're only ever pasting messages that already carry their own header (see Read below).</p>
-
-  <div class="slot-summary">
-    <div class="slot-chip active" data-target="g0"><span class="swatch"></span>
-      <span class="meta"><span class="label"><span class="slot-dot dot-g0"></span>Grid &middot; 1</span><span class="name">—</span></span></div>
-    <div class="slot-chip" data-target="g1"><span class="swatch"></span>
-      <span class="meta"><span class="label"><span class="slot-dot dot-g1"></span>Grid &middot; 2</span><span class="name">—</span></span></div>
-    <div class="slot-chip" data-target="d0"><span class="swatch"></span>
-      <span class="meta"><span class="label"><span class="slot-dot dot-d0"></span>Diamond &middot; 1</span><span class="name">—</span></span></div>
-    <div class="slot-chip" data-target="d1"><span class="swatch"></span>
-      <span class="meta"><span class="label"><span class="slot-dot dot-d1"></span>Diamond &middot; 2</span><span class="name">—</span></span></div>
-  </div>
-  <button class="secondary clear-selection-btn">Clear selection</button>
-
-  <div class="classic-box">
-    <div class="classic-label">Classic pigpen</div>
-    <div class="gallery classic-gallery"></div>
-  </div>
-
-  <div class="gallery other-gallery"></div>
-  </section>
-
-  <section class="card">
-  <h2><span class="step-badge">2</span>Your key</h2>
-  <p class="hint">Fills in automatically once all 4 slots above are chosen. The alphabet chart below is
-  also how you decode: click each symbol you recognize, in order, to rebuild the message.</p>
-  <div class="row">
-    <div>
-      <label>Seed (reuse it later to reproduce the same shuffle)</label>
-      <input type="text" class="seed-input" placeholder="leave empty for a random alphabet" />
+    <div class="field-row" style="margin-top:.9rem;">
+      <label style="margin:0;" data-i18n="encoded_result_label"></label>
+      <button class="small secondary" id="write-copyGlyphsBtn" data-i18n="copy_codes_btn"></button>
     </div>
-  </div>
-  <div>
-    <button class="gen-btn">Regenerate with this seed</button>
-    <button class="secondary seed-word-btn">🎲 Suggest a word</button>
-    <button class="secondary download-key-btn">Download key</button>
-  </div>
-  <span class="key-status">No key yet — choose 4 styles above.</span>
-  <div class="chart-grid chart-glyphs" style="margin-top:.9rem;"></div>
-  </section>
+    <div class="glyph-stream" id="write-encodeGlyphs"></div>
+    <div class="header-line" id="write-headerLine"></div>
+
+    <details>
+      <summary data-i18n="show_text_summary"></summary>
+      <div class="field-row" style="justify-content:flex-end;">
+        <button class="small secondary" id="write-copyFullBtn" data-i18n="copy_btn"></button>
+      </div>
+      <textarea id="write-fullTextOut" class="mono" readonly style="min-height:5rem;"></textarea>
+    </details>
   </div>
 
-  <section class="card">
-  <h2><span class="step-badge">3</span>Read</h2>
-  <p class="hint">Click each symbol in the alphabet chart above (in "Your key") to rebuild the message,
-  in order — the chart already shows every symbol this key can produce. Use / for a space.</p>
-  <div class="row" style="margin-bottom:.3rem;">
-    <button class="small" id="read-spaceBtn">/ space</button>
-    <button class="small secondary" id="read-undoBtn">&larr; undo</button>
-    <button class="small secondary" id="read-clearSeqBtn">clear</button>
-  </div>
-  <div class="glyph-stream editable" id="read-sequenceStrip"><span class="empty-hint">Click symbols in the chart above to build the sequence — click a symbol here to remove it.</span></div>
+  <div class="tabpanel" data-tab="read">
+    <p class="hint" data-i18n="read_hint"></p>
+    <div class="row" style="margin-bottom:.3rem;">
+      <button class="small" id="read-spaceBtn" data-i18n="space_btn"></button>
+      <button class="small secondary" id="read-undoBtn" data-i18n="undo_btn"></button>
+      <button class="small secondary" id="read-clearSeqBtn" data-i18n="clear_btn"></button>
+    </div>
+    <div class="glyph-stream editable" id="read-sequenceStrip"><span class="empty-hint" data-i18n="sequence_empty_hint"></span></div>
 
-  <div class="field-row">
-    <label for="read-plainOut" style="margin:0;">Decoded text</label>
-    <button class="small secondary" id="read-copyPlainBtn">📋 Copy</button>
-  </div>
-  <textarea id="read-plainOut" readonly></textarea>
-
-  <details>
-    <summary>Paste a message to decode instead (header optional)</summary>
-    <p class="hint">Paste a coded message — with a <code>mood_slotA_slotB_seed_punctuation</code> header
-    line (its own god-block codes and seed rebuild the exact key needed, even if it's a different one
-    than what's selected above), or without a header at all (decoded using whichever key is set above
-    instead). Whether the header is there or not, this one box handles both.</p>
-    <textarea id="read-pasteIn" class="mono" placeholder="mood_slotA_slotB_seed_punctuation&#10;coded body&#10;#&#10;(header line is optional — omit it to decode with the key set above)"></textarea>
-    <button class="small secondary" id="read-pasteBtn">Decode</button>
-    <div class="hint" id="read-pasteMoodPunct"></div>
     <div class="field-row">
-      <label style="margin:0;">Result</label>
-      <button class="small secondary" id="read-copyPasteBtn">📋 Copy</button>
+      <label for="read-plainOut" style="margin:0;" data-i18n="decoded_text_label"></label>
+      <button class="small secondary" id="read-copyPlainBtn" data-i18n="copy_btn"></button>
     </div>
-    <textarea id="read-pasteOut" readonly></textarea>
-  </details>
+    <textarea id="read-plainOut" readonly></textarea>
+
+    <details>
+      <summary data-i18n="paste_summary"></summary>
+      <p class="hint" data-i18n="paste_hint"></p>
+      <textarea id="read-pasteIn" class="mono" data-i18n-placeholder="paste_placeholder"></textarea>
+      <button class="small secondary" id="read-pasteBtn" data-i18n="decode_btn"></button>
+      <div class="hint" id="read-pasteMoodPunct"></div>
+      <div class="field-row">
+        <label style="margin:0;" data-i18n="result_label"></label>
+        <button class="small secondary" id="read-copyPasteBtn" data-i18n="copy_btn"></button>
+      </div>
+      <textarea id="read-pasteOut" readonly></textarea>
+    </details>
+  </div>
   </section>
 
-</div>
+  <footer>
+    <p class="footer-tagline">Gods Lies &mdash; <span data-i18n="footer_text"></span></p>
 
-<footer>Gods Lies &mdash; fourteen small gods, one honest cipher.</footer>
+    <div class="footer-info">
+      <details>
+        <summary data-i18n="about_summary"></summary>
+        <p data-i18n="about_text"></p>
+      </details>
+      <details>
+        <summary data-i18n="security_summary"></summary>
+        <p data-i18n="security_text"></p>
+      </details>
+      <details>
+        <summary data-i18n="license_summary"></summary>
+        <p data-i18n-html="license_text"></p>
+      </details>
+      <details>
+        <summary data-i18n="credits_summary"></summary>
+        <p data-i18n="credits_text"></p>
+      </details>
+    </div>
+
+    <p class="footer-links">
+      <a href="https://github.com/Nevro-Pat/GodsLies" target="_blank" rel="noopener noreferrer" data-i18n="footer_github"></a>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/Nevro-Pat/GodsLies/issues" target="_blank" rel="noopener noreferrer" data-i18n="footer_issues"></a>
+    </p>
+  </footer>
+</div>
 
 <script>
 // GENERATED by extract_assets.py -- do not hand-edit this block, it's overwritten on every extraction run.
 const FILL_MANIFEST = {"apate/diamond4_E":0.069,"apate/diamond4_N":0.138,"apate/diamond4_S":0.206,"apate/diamond4_W":0.206,"apate/grid9_1":0.675,"apate/grid9_2":0.675,"apate/grid9_3":0.688,"apate/grid9_4":0.675,"apate/grid9_5":0.688,"apate/grid9_6":0.688,"apate/grid9_7":0.675,"apate/grid9_8":0.688,"apate/grid9_9":0.688,"arnesis/diamond4_E":0.175,"arnesis/diamond4_N":0.181,"arnesis/diamond4_S":0.181,"arnesis/diamond4_W":0.181,"arnesis/grid9_1":0.631,"arnesis/grid9_2":0.538,"arnesis/grid9_3":0.631,"arnesis/grid9_4":0.538,"arnesis/grid9_5":0.631,"arnesis/grid9_6":0.538,"arnesis/grid9_7":0.631,"arnesis/grid9_8":0.538,"arnesis/grid9_9":0.631,"ate/diamond4_E":0.812,"ate/diamond4_N":0.812,"ate/diamond4_S":0.825,"ate/diamond4_W":0.819,"ate/grid9_1":0.769,"ate/grid9_2":0.856,"ate/grid9_3":0.769,"ate/grid9_4":0.875,"ate/grid9_5":0.875,"ate/grid9_6":0.875,"ate/grid9_7":0.762,"ate/grid9_8":0.869,"ate/grid9_9":0.762,"daidalos/diamond4_E":0.238,"daidalos/diamond4_N":0.231,"daidalos/diamond4_S":0.238,"daidalos/diamond4_W":0.231,"daidalos/grid9_1":0.675,"daidalos/grid9_2":0.681,"daidalos/grid9_3":0.669,"daidalos/grid9_4":0.688,"daidalos/grid9_5":0.462,"daidalos/grid9_6":0.662,"daidalos/grid9_7":0.662,"daidalos/grid9_8":0.675,"daidalos/grid9_9":0.65,"dolos/diamond4_E":0.231,"dolos/diamond4_N":0.231,"dolos/diamond4_S":0.238,"dolos/diamond4_W":0.231,"dolos/grid9_1":0.688,"dolos/grid9_2":0.681,"dolos/grid9_3":0.669,"dolos/grid9_4":0.7,"dolos/grid9_5":0.469,"dolos/grid9_6":0.681,"dolos/grid9_7":0.675,"dolos/grid9_8":0.688,"dolos/grid9_9":0.669,"hermes/diamond4_E":0.819,"hermes/diamond4_N":0.812,"hermes/diamond4_S":0.825,"hermes/diamond4_W":0.819,"hermes/grid9_1":0.781,"hermes/grid9_2":0.875,"hermes/grid9_3":0.781,"hermes/grid9_4":0.862,"hermes/grid9_5":0.875,"hermes/grid9_6":0.875,"hermes/grid9_7":0.775,"hermes/grid9_8":0.856,"hermes/grid9_9":0.762,"horkos/diamond4_E":0.225,"horkos/diamond4_N":0.231,"horkos/diamond4_S":0.225,"horkos/diamond4_W":0.225,"horkos/grid9_1":0.581,"horkos/grid9_2":0.688,"horkos/grid9_3":0.538,"horkos/grid9_4":0.688,"horkos/grid9_5":0.469,"horkos/grid9_6":0.675,"horkos/grid9_7":0.569,"horkos/grid9_8":0.688,"horkos/grid9_9":0.55,"kolax/diamond4_E":0.194,"kolax/diamond4_N":0.194,"kolax/diamond4_S":0.2,"kolax/diamond4_W":0.194,"kolax/grid9_1":0.662,"kolax/grid9_2":0.681,"kolax/grid9_3":0.681,"kolax/grid9_4":0.675,"kolax/grid9_5":0.525,"kolax/grid9_6":0.706,"kolax/grid9_7":0.675,"kolax/grid9_8":0.688,"kolax/grid9_9":0.694,"lethe/diamond4_E":0.256,"lethe/diamond4_N":0.256,"lethe/diamond4_S":0.256,"lethe/diamond4_W":0.256,"lethe/grid9_1":0.556,"lethe/grid9_2":0.556,"lethe/grid9_3":0.556,"lethe/grid9_4":0.556,"lethe/grid9_5":0.612,"lethe/grid9_6":0.556,"lethe/grid9_7":0.562,"lethe/grid9_8":0.562,"lethe/grid9_9":0.556,"limos/diamond4_E":0.262,"limos/diamond4_N":0.262,"limos/diamond4_S":0.262,"limos/diamond4_W":0.262,"limos/grid9_1":0.625,"limos/grid9_2":0.712,"limos/grid9_3":0.6,"limos/grid9_4":0.738,"limos/grid9_5":0.762,"limos/grid9_6":0.688,"limos/grid9_7":0.625,"limos/grid9_8":0.7,"limos/grid9_9":0.594,"lochos/diamond4_E":0.319,"lochos/diamond4_N":0.319,"lochos/diamond4_S":0.325,"lochos/diamond4_W":0.319,"lochos/grid9_1":0.538,"lochos/grid9_2":0.538,"lochos/grid9_3":0.531,"lochos/grid9_4":0.531,"lochos/grid9_5":0.612,"lochos/grid9_6":0.531,"lochos/grid9_7":0.538,"lochos/grid9_8":0.538,"lochos/grid9_9":0.531,"loxias/diamond4_E":0.194,"loxias/diamond4_N":0.194,"loxias/diamond4_S":0.194,"loxias/diamond4_W":0.194,"loxias/grid9_1":0.519,"loxias/grid9_2":0.581,"loxias/grid9_3":0.519,"loxias/grid9_4":0.581,"loxias/grid9_5":0.406,"loxias/grid9_6":0.588,"loxias/grid9_7":0.512,"loxias/grid9_8":0.588,"loxias/grid9_9":0.519,"mnemon/diamond4_E":0.25,"mnemon/diamond4_N":0.25,"mnemon/diamond4_S":0.25,"mnemon/diamond4_W":0.25,"mnemon/grid9_1":0.675,"mnemon/grid9_2":0.675,"mnemon/grid9_3":0.688,"mnemon/grid9_4":0.675,"mnemon/grid9_5":0.688,"mnemon/grid9_6":0.688,"mnemon/grid9_7":0.675,"mnemon/grid9_8":0.688,"mnemon/grid9_9":0.688,"phantasos/diamond4_E":0.319,"phantasos/diamond4_N":0.319,"phantasos/diamond4_S":0.325,"phantasos/diamond4_W":0.319,"phantasos/grid9_1":0.538,"phantasos/grid9_2":0.538,"phantasos/grid9_3":0.538,"phantasos/grid9_4":0.531,"phantasos/grid9_5":0.631,"phantasos/grid9_6":0.531,"phantasos/grid9_7":0.538,"phantasos/grid9_8":0.538,"phantasos/grid9_9":0.538};
 // END GENERATED
 
+// --- i18n: every user-facing string lives here, keyed the same in both
+// languages. Static markup is tagged with data-i18n / data-i18n-html /
+// data-i18n-placeholder / data-i18n-title and swept on every applyLanguage()
+// call; anything generated at runtime (alerts, key status, tooltips, copy-
+// button flashes) goes through t() instead of a hardcoded string. "Gods
+// Lies" itself and the slotA/slotB/mood/seed/punctuation template tokens
+// stay untranslated -- they're a name and literal format syntax, not prose.
+// The footer_text tagline is deliberately English-only in BOTH languages
+// (see the fr block below and applyLanguage()) -- "an honest cipher" is a
+// pun that doesn't survive a literal French translation.
+//
+// The hint strings (cipher_hint, key_hint, write_mood_hint, read_hint,
+// paste_hint) are intentionally terse -- the front page used to carry the
+// full mechanical explanation inline, which read as clutter once the UI
+// itself made most of it obvious. Full mechanics, for reference:
+//   - cipher_hint: filling a slot auto-advances Grid·1 -> Grid·2 ->
+//     Diamond·1 -> Diamond·2; once all 4 are full, clicking again rotates
+//     back to replace Grid·1/Diamond·1, then Grid·2/Diamond·2, and so on
+//     (grid and diamond rotate independently -- see rotatingSlotOfType()).
+//     A tile's colored corner shows every slot it's currently filling.
+//   - key_hint: the alphabet/seed/download button are one unit (the
+//     "key"); the Read tab's chart doubles as its decode input.
+//   - write_mood_hint: mood/punctuation aren't enciphered -- they ride
+//     along in the plain-text message header (see the write-encodeBtn
+//     handler) alongside the key's god-block codes and seed.
+//   - paste_hint / message header grammar: fully documented in README.md
+//     ("Message format") and in godRefCode()/parseGodRef() above.
+const STRINGS = {
+  en: {
+    tagline: "A pigpen cipher drawn from fourteen small gods, each with their own way of lying — mix any two grid-shaped ciphers with any two diamond-shaped ciphers into your own private alphabet, then write and read in symbols.",
+    tab_write: "Write",
+    tab_read: "Read",
+    footer_text: "fourteen small gods, one honest cipher.",
+
+    step_cipher: "Choose your cipher",
+    cipher_hint: "Click a name's tile to fill the next open slot. Once full, clicking again replaces the first, then the second.",
+    slot_grid1: "Grid · 1",
+    slot_grid2: "Grid · 2",
+    slot_diamond1: "Diamond · 1",
+    slot_diamond2: "Diamond · 2",
+    godblock_a: "Block A",
+    godblock_b: "Block B",
+    clear_selection: "Clear selection",
+    classic_label: "Classic pigpen",
+
+    step_key: "Your key",
+    key_hint: "Fills in automatically once all 4 slots above are chosen.",
+    seed_label: "Seed (reuse it later to reproduce the same shuffle — also doubles as the message header's seed word when you encode)",
+    seed_placeholder: "leave empty for a random alphabet",
+    regen_btn: "Regenerate with this seed",
+    seed_word_btn: "🎲 Suggest a word",
+    download_btn: "Download key",
+    key_status_empty: "No key yet — choose 4 styles above.",
+    key_ready_title: "Key ready",
+    key_grid_label: "Grid",
+    key_diamond_label: "Diamond",
+    key_seed_label: "Seed",
+
+    step_message: "Write or read",
+    plaintext_label: "Plaintext",
+    plaintext_placeholder: "Type a message...",
+    mood_label: "Mood tag (optional)",
+    punct_label: "Punctuation (optional)",
+    write_mood_hint: "Optional — included with the encoded result below.",
+    encode_btn: "Encode",
+    encoded_result_label: "Encoded result",
+    copy_codes_btn: "📋 Copy as codes",
+    show_text_summary: "Show as text (header + codes — for pasting into Read, or anywhere else)",
+    copy_btn: "📋 Copy",
+
+    read_hint: "Click symbols in the chart above, in order, to rebuild the message. Use / for a space.",
+    space_btn: "/ space",
+    undo_btn: "← undo",
+    clear_btn: "clear",
+    sequence_empty_hint: "Click symbols in the chart above to build the sequence — click a symbol here to remove it.",
+    nothing_encoded_yet: "Nothing encoded yet.",
+    decoded_text_label: "Decoded text",
+    paste_summary: "Paste a message to decode instead (header optional)",
+    paste_hint: "Paste a coded message, with or without its header line.",
+    paste_placeholder: "mood_slotA_slotB_seed_punctuation\ncoded body\n#\n(header line is optional — omit it to decode with the key set above)",
+    decode_btn: "Decode",
+    result_label: "Result",
+
+    alert_choose_4_slots: "Choose a name for all 4 slots first (2 grid, 2 diamond) above.",
+    alert_generate_key_first: "Generate a key first.",
+    alert_choose_4_styles: "Choose all 4 styles first (Choose your cipher, above).",
+    alert_paste_first: "Paste a coded message first.",
+    alert_no_header_no_key: "No header found in that text, and no key chosen above — pick your 4 styles first, or paste a message that includes its own header.",
+    header_line: "Header → {{header}}",
+    couldnt_derive_key: "Couldn't derive a key from that header: {{msg}}",
+    unknown_god_code_error: "unknown god-block code in header",
+    mood_punct_display: "Mood: {{mood}}   ·   Punctuation: {{punct}}",
+    copy_nothing_yet: "Nothing yet",
+    copy_copied: "Copied!",
+    copy_failed: "Couldn't copy",
+    title_grid_style: "grid style",
+    title_diamond_style: "diamond style",
+    title_click_to_add: "click to add {{letter}}",
+    title_click_to_remove: "click to remove",
+    title_glyph_cell: "cell {{pos}}",
+    title_glyph_arm: "arm {{pos}}",
+    lang_switch_to_fr: "🇫🇷 Français",
+    lang_switch_to_en: "🇬🇧 English",
+    theme_switch_to_dark: "🌙 Dark",
+    theme_switch_to_light: "☀️ Light",
+
+    about_summary: "About",
+    about_text: "Gods Lies is a pigpen-style substitution cipher. Pick two grid styles and two diamond styles from fourteen symbol sets to build a private 26-letter alphabet, then encode and decode messages in symbols instead of letters.",
+    security_summary: "Security & privacy",
+    security_text: "Everything runs locally in your browser — nothing you type, encode, or decode is sent anywhere, and there are no accounts, analytics, or cookies. A downloaded key file can decode any message written with it, so keep it as private as the messages themselves. This is a classic-style substitution cipher for personal and recreational use, not audited or peer-reviewed cryptography — don't rely on it to protect anything genuinely sensitive.",
+    license_summary: "License",
+    license_text: "All rights reserved — the source is public on GitHub for transparency, but no license is granted to copy, modify, or redistribute it. Full text: <a href=\"https://github.com/Nevro-Pat/GodsLies/blob/main/LICENSE\" target=\"_blank\" rel=\"noopener noreferrer\">LICENSE</a>.",
+    credits_summary: "Credits",
+    credits_text: "The symbol sets are adapted from a hand-drawn pigpen-cipher reference chart; the fourteen names are Greek deities and personifications associated with lying, trickery, or concealment. Full source notes are in the project's README on GitHub.",
+    footer_github: "View source on GitHub",
+    footer_issues: "Report an issue",
+  },
+  fr: {
+    tagline: "Un chiffre pigpen tiré de quatorze petits dieux, chacun avec sa propre façon de mentir — combinez deux styles de grille et deux styles de losange pour créer votre alphabet privé, puis écrivez et lisez en symboles.",
+    tab_write: "Écrire",
+    tab_read: "Lire",
+    // no footer_text here on purpose -- t() falls back to the English line,
+    // and applyLanguage() also force-sets it directly (see below).
+
+    step_cipher: "Choisissez votre chiffre",
+    cipher_hint: "Cliquez sur la tuile d'un nom pour remplir la prochaine case libre. Une fois toutes remplies, cliquer à nouveau remplace la première, puis la seconde.",
+    slot_grid1: "Grille · 1",
+    slot_grid2: "Grille · 2",
+    slot_diamond1: "Losange · 1",
+    slot_diamond2: "Losange · 2",
+    godblock_a: "Bloc A",
+    godblock_b: "Bloc B",
+    clear_selection: "Effacer la sélection",
+    classic_label: "Pigpen classique",
+
+    step_key: "Votre clé",
+    key_hint: "Se remplit automatiquement une fois les 4 cases ci-dessus choisies.",
+    seed_label: "Graine (réutilisez-la plus tard pour reproduire le même mélange — elle sert aussi de mot-graine dans l'en-tête du message lors du chiffrement)",
+    seed_placeholder: "laisser vide pour un alphabet aléatoire",
+    regen_btn: "Régénérer avec cette graine",
+    seed_word_btn: "🎲 Suggérer un mot",
+    download_btn: "Télécharger la clé",
+    key_status_empty: "Pas encore de clé — choisissez 4 styles ci-dessus.",
+    key_ready_title: "Clé prête",
+    key_grid_label: "Grille",
+    key_diamond_label: "Losange",
+    key_seed_label: "Graine",
+
+    step_message: "Écrire ou lire",
+    plaintext_label: "Texte en clair",
+    plaintext_placeholder: "Tapez un message…",
+    mood_label: "Humeur (optionnel)",
+    punct_label: "Ponctuation (optionnel)",
+    write_mood_hint: "Optionnel — inclus avec le résultat chiffré ci-dessous.",
+    encode_btn: "Chiffrer",
+    encoded_result_label: "Résultat chiffré",
+    copy_codes_btn: "📋 Copier en codes",
+    show_text_summary: "Afficher en texte (en-tête + codes — à coller dans Lire, ou ailleurs)",
+    copy_btn: "📋 Copier",
+
+    read_hint: "Cliquez sur les symboles de la grille ci-dessus, dans l'ordre, pour reconstituer le message. Utilisez / pour un espace.",
+    space_btn: "/ espace",
+    undo_btn: "← annuler",
+    clear_btn: "effacer",
+    sequence_empty_hint: "Cliquez sur des symboles dans la grille ci-dessus pour construire la séquence — cliquez sur un symbole ici pour le retirer.",
+    nothing_encoded_yet: "Rien de chiffré pour l'instant.",
+    decoded_text_label: "Texte déchiffré",
+    paste_summary: "Coller un message à déchiffrer à la place (en-tête optionnel)",
+    paste_hint: "Collez un message chiffré, avec ou sans sa ligne d'en-tête.",
+    paste_placeholder: "mood_slotA_slotB_seed_punctuation\ncorps chiffré\n#\n(la ligne d'en-tête est optionnelle — omettez-la pour déchiffrer avec la clé définie ci-dessus)",
+    decode_btn: "Déchiffrer",
+    result_label: "Résultat",
+
+    alert_choose_4_slots: "Choisissez d'abord un nom pour les 4 cases ci-dessus (2 grilles, 2 losanges).",
+    alert_generate_key_first: "Générez d'abord une clé.",
+    alert_choose_4_styles: "Choisissez d'abord les 4 styles (Choisissez votre chiffre, ci-dessus).",
+    alert_paste_first: "Collez d'abord un message chiffré.",
+    alert_no_header_no_key: "Aucun en-tête trouvé dans ce texte, et aucune clé choisie ci-dessus — choisissez d'abord vos 4 styles, ou collez un message qui inclut son propre en-tête.",
+    header_line: "En-tête → {{header}}",
+    couldnt_derive_key: "Impossible de déduire une clé de cet en-tête : {{msg}}",
+    unknown_god_code_error: "code de dieu-bloc inconnu dans l'en-tête",
+    mood_punct_display: "Humeur : {{mood}}   ·   Ponctuation : {{punct}}",
+    copy_nothing_yet: "Rien encore",
+    copy_copied: "Copié !",
+    copy_failed: "Échec de la copie",
+    title_grid_style: "style grille",
+    title_diamond_style: "style losange",
+    title_click_to_add: "cliquer pour ajouter {{letter}}",
+    title_click_to_remove: "cliquer pour retirer",
+    title_glyph_cell: "case {{pos}}",
+    title_glyph_arm: "bras {{pos}}",
+    lang_switch_to_fr: "🇫🇷 Français",
+    lang_switch_to_en: "🇬🇧 English",
+    theme_switch_to_dark: "🌙 Sombre",
+    theme_switch_to_light: "☀️ Clair",
+
+    about_summary: "À propos",
+    about_text: "Gods Lies est un chiffre de substitution de type pigpen. Choisissez deux styles de grille et deux styles de losange parmi quatorze jeux de symboles pour construire un alphabet privé de 26 lettres, puis chiffrez et déchiffrez des messages en symboles plutôt qu'en lettres.",
+    security_summary: "Sécurité et confidentialité",
+    security_text: "Tout s'exécute localement dans votre navigateur — rien de ce que vous tapez, chiffrez ou déchiffrez n'est envoyé où que ce soit, et il n'y a ni compte, ni analytique, ni cookies. Un fichier de clé téléchargé peut déchiffrer tout message écrit avec lui : gardez-le aussi privé que les messages eux-mêmes. Il s'agit d'un chiffre de substitution classique, pensé pour un usage personnel et récréatif, et non d'une cryptographie auditée ou évaluée par des pairs — ne vous y fiez pas pour protéger quoi que ce soit de réellement sensible.",
+    license_summary: "Licence",
+    license_text: "Tous droits réservés — le code source est visible publiquement sur GitHub à des fins de transparence, mais aucune licence n'est accordée pour le copier, le modifier ou le redistribuer. Texte complet : <a href=\"https://github.com/Nevro-Pat/GodsLies/blob/main/LICENSE\" target=\"_blank\" rel=\"noopener noreferrer\">LICENSE</a>.",
+    credits_summary: "Crédits",
+    credits_text: "Les jeux de symboles sont adaptés d'un tableau de référence de chiffre pigpen dessiné à la main ; les quatorze noms sont des divinités et personnifications grecques associées au mensonge, à la ruse ou à la dissimulation. Les notes complètes sont dans le README du projet sur GitHub.",
+    footer_github: "Voir le code source sur GitHub",
+    footer_issues: "Signaler un problème",
+  },
+};
+
+let currentLang = localStorage.getItem("godslies-lang") || "en";
+
+function t(key, vars) {
+  let s = (STRINGS[currentLang] && STRINGS[currentLang][key]) ?? STRINGS.en[key] ?? key;
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{{${k}}}`, v);
+  return s;
+}
+
 // Real Greek/Greek-word deity names personifying a lie or deception,
 // matched to the visual style each one's real hand-drawn symbols evoke.
-// Hermès + Áte are shown in their own "classic pigpen" box, separate from
+// Hermès + Áte are shown in their own "classic pigpen" column, separate from
 // the other 12, so the tool presents with a familiar/recognizable look
 // before showing the exotic variants. List position has no bearing on
-// the key/slot mapping -- it's display order only.
+// the key/slot mapping -- it's display order only. Names are proper nouns
+// and stay the same in both languages.
 const CLASSIC_GODS = [["hermes", "Hermès"], ["ate", "Áte"]];
 const OTHER_GODS = [
   ["horkos", "Hórkos"], ["arnesis", "Árnesis"], ["phantasos", "Phántasos"], ["dolos", "Dólos"],
@@ -467,11 +744,11 @@ function parseGodRef(ref) {
 }
 
 // Derive a full key straight from a message's own header -- no need for
-// the Read tab's own slots to match, or even be filled in at all.
+// the selected slots to match, or even be filled in at all.
 function keyFromHeader(slotA, slotB, seed) {
   const [g0, d0] = parseGodRef(slotA);
   const [g1, d1] = parseGodRef(slotB);
-  if (!g0 || !d0 || !g1 || !d1) throw new Error("unknown god-block code in header");
+  if (!g0 || !d0 || !g1 || !d1) throw new Error(t("unknown_god_code_error"));
   return generateKey([g0, g1], [d0, d1], seed);
 }
 
@@ -513,8 +790,8 @@ function allSlots() {
 const ALL_SLOTS = allSlots();
 const SLOT_ORDER = ["g0", "g1", "d0", "d1"];
 
-// One color per slot (matches the existing .dot-g0 etc. swatches) used to
-// colorize whichever gallery card/thumbnail is filling that slot -- solid
+// One color per slot (matches the .block-tile[data-target] tints below) used
+// to colorize whichever gallery card/thumbnail is filling that slot -- solid
 // for borders, a softer alpha version for tinted button backgrounds.
 const SLOT_COLORS = { g0: "#a8621f", g1: "#8a4a4a", d0: "#4a7f5e", d1: "#4a6b7f" };
 const SLOT_TINTS = {
@@ -605,10 +882,25 @@ function glyphImg(seg, which, pos, key, cls = "glyph") {
   img.className = cls;
   img.src = assetPath(name, seg, pos);
   img.alt = `${name} ${seg} ${pos}`;
-  img.title = `${GOD_LABEL[name] || name} — ${seg === "grid9" ? "cell " + pos : "arm " + pos}`;
+  const posLabel = seg === "grid9" ? t("title_glyph_cell", { pos }) : t("title_glyph_arm", { pos });
+  img.title = `${GOD_LABEL[name] || name} — ${posLabel}`;
   const scale = fillScale(name, seg, pos);
   if (scale > 1) img.style.transform = `scale(${scale.toFixed(2)})`;
   return img;
+}
+
+// A literal text cell (not a glyph) -- used for pass-through punctuation
+// inside a coded token stream, and for the mood/punctuation tags framing
+// the encoded result. Built with textContent (never innerHTML) since this
+// carries raw user-typed text.
+function litCell(text, tag = false) {
+  const cell = document.createElement("div");
+  cell.className = tag ? "cell tag-cell" : "cell";
+  const span = document.createElement("span");
+  span.className = "lit";
+  span.textContent = text;
+  cell.appendChild(span);
+  return cell;
 }
 
 // Shared renderer for both the encode result (read-only) and the decode
@@ -618,32 +910,41 @@ function glyphImg(seg, which, pos, key, cls = "glyph") {
 function renderGlyphStream(tokens, key, container, onRemove) {
   container.innerHTML = "";
   if (tokens.length === 0) {
-    container.innerHTML = onRemove
-      ? '<span class="empty-hint">Click symbols in the chart above to build the sequence — click a symbol here to remove it.</span>'
-      : '<span class="empty-hint">Nothing encoded yet.</span>';
+    container.innerHTML = `<span class="empty-hint">${onRemove ? t("sequence_empty_hint") : t("nothing_encoded_yet")}</span>`;
     return;
   }
   tokens.forEach((tok, i) => {
     if (tok === "/") {
       const sp = document.createElement("div");
       sp.className = "space";
-      if (onRemove) { sp.style.cursor = "pointer"; sp.title = "click to remove"; sp.onclick = () => onRemove(i); }
+      if (onRemove) { sp.style.cursor = "pointer"; sp.title = t("title_click_to_remove"); sp.onclick = () => onRemove(i); }
       container.appendChild(sp);
       return;
     }
-    const cell = document.createElement(onRemove ? "button" : "div");
-    cell.className = "cell";
+    let cell;
     if (/^[GD]/i.test(tok) && tok.length >= 2) {
       try {
         const [seg, which, pos] = parseCode(tok);
+        cell = document.createElement(onRemove ? "button" : "div");
+        cell.className = "cell";
         cell.appendChild(glyphImg(seg, which, pos, key));
-      } catch { cell.innerHTML = `<span class="lit">${tok}</span>`; }
+      } catch { cell = litCell(tok); }
     } else {
-      cell.innerHTML = `<span class="lit">${tok}</span>`;
+      cell = litCell(tok);
     }
-    if (onRemove) { cell.title = "click to remove"; cell.onclick = () => onRemove(i); }
+    if (onRemove) { cell.title = t("title_click_to_remove"); cell.onclick = () => onRemove(i); }
     container.appendChild(cell);
   });
+}
+
+// Renders the coded body, then frames it with the mood tag (front) and
+// punctuation (back) as distinct "tag" cells -- display only, doesn't
+// change lastWriteCoded (still just the coded body, used for copy/decode).
+function renderWriteResult(coded, mood, punct, key, container) {
+  renderGlyphStream(coded.split(/\s+/).filter(Boolean), key, container);
+  if (container.querySelector(".empty-hint") && !mood && !punct) return;
+  if (mood) container.insertBefore(litCell(mood, true), container.firstChild);
+  if (punct) container.appendChild(litCell(punct, true));
 }
 
 // `onClick(seg, which, pos)`, when given, turns every cell into a button
@@ -656,11 +957,7 @@ function renderChart(key, container, onClick) {
     const [seg, which, pos] = key.letter_to_slot[letter];
     const cell = document.createElement(onClick ? "button" : "div");
     cell.className = "cell" + (onClick ? " clickable" : "");
-    if (onClick) { cell.type = "button"; cell.title = `click to add ${letter}`; }
-    const label = document.createElement("div");
-    label.className = "letter";
-    label.textContent = letter;
-    cell.appendChild(label);
+    if (onClick) { cell.type = "button"; cell.title = t("title_click_to_add", { letter }); }
     cell.appendChild(glyphImg(seg, which, pos, key));
     if (onClick) cell.onclick = () => onClick(seg, which, pos);
     container.appendChild(cell);
@@ -670,6 +967,9 @@ function renderChart(key, container, onClick) {
 // A common-word/common-name pool for the seed suggester -- since the
 // seed word IS the real seed, a memorable word works just as well as a
 // random number and doubles as the message header's seed field for free.
+// Kept language-independent (a mix of French and English words/names
+// already, deliberately) since the seed is literal cryptographic input,
+// not prose.
 const SEED_WORDS = [
   "Poutine", "Bagel", "Croissant", "Waffle", "Pretzel", "Biscuit", "Noodle", "Pancake",
   "Falafel", "Dumpling", "Mango", "Papaya", "Coconut", "Cherry", "Apricot", "Walnut",
@@ -702,65 +1002,45 @@ async function copyText(text) {
 function wireCopy(btnId, getText) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
-  const original = btn.textContent;
   btn.onclick = async () => {
+    const original = btn.textContent;
     const text = getText();
-    if (!text) { btn.textContent = "Nothing yet"; setTimeout(() => { btn.textContent = original; }, 1000); return; }
+    if (!text) { btn.textContent = t("copy_nothing_yet"); setTimeout(() => { btn.textContent = original; }, 1000); return; }
     const ok = await copyText(text);
-    btn.textContent = ok ? "Copied!" : "Couldn't copy";
+    btn.textContent = ok ? t("copy_copied") : t("copy_failed");
     setTimeout(() => { btn.textContent = original; }, 1200);
   };
 }
 
-// --- one self-contained cipher picker + key generator, instantiated once
-// for Write and once for Read so each can hold a different key. `ns` is
-// "write" or "read"; `root` wraps that instance's two "card" sections. ---
-function createCipherPanel(ns) {
-  const root = document.getElementById(`${ns}-cipherRoot`);
-  const slotSummary = root.querySelector(".slot-summary");
-  const classicGallery = root.querySelector(".classic-gallery");
-  const otherGallery = root.querySelector(".other-gallery");
-  const clearBtn = root.querySelector(".clear-selection-btn");
-  const seedInput = root.querySelector(".seed-input");
-  const genBtn = root.querySelector(".gen-btn");
-  const seedWordBtn = root.querySelector(".seed-word-btn");
-  const downloadBtn = root.querySelector(".download-key-btn");
-  const keyStatus = root.querySelector(".key-status");
-  const chartEl = root.querySelector(".chart-glyphs");
+// --- the one cipher picker + key generator, shared by Write and Read ---
+function createCipherPanel() {
+  const classicGallery = document.querySelector(".classic-gallery");
+  const otherGallery = document.querySelector(".other-gallery");
+  const clearBtn = document.querySelector(".clear-selection-btn");
+  const seedInput = document.querySelector(".seed-input");
+  const genBtn = document.querySelector(".gen-btn");
+  const seedWordBtn = document.querySelector(".seed-word-btn");
+  const downloadBtn = document.querySelector(".download-key-btn");
+  const keyStatus = document.querySelector(".key-status");
+  const chartEl = document.querySelector(".chart-glyphs");
 
-  let target = "g0";
   const selection = { g0: null, g1: null, d0: null, d1: null };
   let currentKey = null;
   let chartClickHandler = null;
   let onKeyReadyCb = null;
   let onClearCb = null;
 
-  function chipFor(slot) { return slotSummary.querySelector(`.slot-chip[data-target="${slot}"]`); }
-
-  // The slot a thumbnail click should land in when the active chip isn't
-  // already of the matching type: the first still-empty slot of that type,
-  // NOT a hardcoded index. Hardcoding (e.g. always "g0") would silently
-  // overwrite an already-filled g0 the moment the active chip drifted onto
-  // a diamond slot and the user then clicked a *second* grid thumbnail --
-  // exactly the "illogical order" bug this replaces.
-  function firstEmptySlotOfType(prefix) {
-    return SLOT_ORDER.find(s => s[0] === prefix && !selection[s])
-      || (prefix === "g" ? "g0" : "d0");
+  // Rotating "next slot" pointer per type -- clicking a grid tile always
+  // fills whichever grid slot is next in rotation (grid·1 then grid·2, then
+  // back to grid·1, ...), independently of the diamond rotation. No need to
+  // pre-target a slot first; that's the whole point (see cipher_hint).
+  let nextGrid = "g0", nextDiamond = "d0";
+  function rotatingSlotOfType(prefix) {
+    if (prefix === "g") { const s = nextGrid; nextGrid = (s === "g0") ? "g1" : "g0"; return s; }
+    const s = nextDiamond; nextDiamond = (s === "d0") ? "d1" : "d0"; return s;
   }
 
-  function setActiveChip(slot) {
-    target = slot;
-    slotSummary.querySelectorAll(".slot-chip").forEach(c => c.classList.toggle("active", c.dataset.target === slot));
-  }
-  slotSummary.querySelectorAll(".slot-chip").forEach(chip => {
-    chip.onclick = () => setActiveChip(chip.dataset.target);
-  });
-
-  function advanceToNextEmptySlot(justFilled) {
-    const order = SLOT_ORDER.slice(SLOT_ORDER.indexOf(justFilled) + 1).concat(SLOT_ORDER);
-    const next = order.find(s => !selection[s]);
-    if (next) setActiveChip(next);
-  }
+  function chipFor(slot) { return document.querySelector(`.block-tile[data-target="${slot}"]`); }
 
   function buildGalleryInto(container, gods) {
     container.innerHTML = "";
@@ -772,13 +1052,15 @@ function createCipherPanel(ns) {
         <span class="corner-tag g0">G1</span><span class="corner-tag g1">G2</span>
         <span class="corner-tag d0">D1</span><span class="corner-tag d1">D2</span>
         <div class="thumbs">
-          <button class="g9" title="grid style"><img src="${assetPath(id,'grid9','tile')}"></button>
-          <button class="d4" title="diamond style"><img src="${assetPath(id,'diamond4','tile')}"></button>
+          <button class="g9" data-i18n-title="title_grid_style"><img src="${assetPath(id,'grid9','tile')}"></button>
+          <button class="d4" data-i18n-title="title_diamond_style"><img src="${assetPath(id,'diamond4','tile')}"></button>
         </div>
         <div class="name">${label}</div>
       `;
-      card.querySelector(".g9").onclick = () => assign(target.startsWith("g") ? target : firstEmptySlotOfType("g"), id);
-      card.querySelector(".d4").onclick = () => assign(target.startsWith("d") ? target : firstEmptySlotOfType("d"), id);
+      card.querySelector(".g9").title = t("title_grid_style");
+      card.querySelector(".d4").title = t("title_diamond_style");
+      card.querySelector(".g9").onclick = () => assign(rotatingSlotOfType("g"), id);
+      card.querySelector(".d4").onclick = () => assign(rotatingSlotOfType("d"), id);
       container.appendChild(card);
     }
   }
@@ -787,7 +1069,7 @@ function createCipherPanel(ns) {
     const cards = [...classicGallery.children, ...otherGallery.children];
     cards.forEach(card => {
       const id = card.dataset.name;
-      card.querySelectorAll(".corner-tag").forEach(t => t.style.display = "none");
+      card.querySelectorAll(".corner-tag").forEach(tag => tag.style.display = "none");
       const cardColors = [];
       for (const [slot, name] of Object.entries(selection)) {
         if (name === id) {
@@ -823,6 +1105,7 @@ function createCipherPanel(ns) {
       const name = selection[slot];
       const seg = slot[0] === "g" ? "grid9" : "diamond4";
       const chip = chipFor(slot);
+      chip.classList.toggle("filled", !!name);
       const swatch = chip.querySelector(".swatch");
       const nameEl = chip.querySelector(".name");
       if (name) {
@@ -837,18 +1120,43 @@ function createCipherPanel(ns) {
 
   function assign(slot, name) {
     selection[slot] = name;
-    chipFor(slot).classList.add("filled");
     refreshUI();
-    advanceToNextEmptySlot(slot);
     maybeAutoGenerate();
+  }
+
+  function updateKeyStatusText() {
+    keyStatus.innerHTML = "";
+    if (currentKey) {
+      const g = currentKey.grid9_gods.map(n => GOD_LABEL[n] || n).join(" + ");
+      const d = currentKey.diamond4_gods.map(n => GOD_LABEL[n] || n).join(" + ");
+      const title = document.createElement("div");
+      title.className = "key-status-title";
+      title.textContent = t("key_ready_title");
+      keyStatus.appendChild(title);
+      const rows = document.createElement("div");
+      rows.className = "key-status-rows";
+      for (const [label, value] of [
+        [t("key_grid_label"), g],
+        [t("key_diamond_label"), d],
+        [t("key_seed_label"), `"${currentKey.seed}"`],
+      ]) {
+        const row = document.createElement("div");
+        row.className = "key-status-row";
+        const l = document.createElement("span"); l.className = "key-status-label"; l.textContent = label;
+        const v = document.createElement("span"); v.className = "key-status-value"; v.textContent = value;
+        row.append(l, v);
+        rows.appendChild(row);
+      }
+      keyStatus.appendChild(rows);
+    } else {
+      keyStatus.textContent = t("key_status_empty");
+    }
   }
 
   function setKey(key) {
     currentKey = key;
     keyStatus.classList.add("ready");
-    const g = key.grid9_gods.map(n => GOD_LABEL[n] || n).join(" + ");
-    const d = key.diamond4_gods.map(n => GOD_LABEL[n] || n).join(" + ");
-    keyStatus.textContent = `Key ready — grid: ${g} · diamond: ${d} · seed "${key.seed}"`;
+    updateKeyStatusText();
     renderChart(currentKey, chartEl, chartClickHandler);
     if (onKeyReadyCb) onKeyReadyCb(currentKey);
   }
@@ -862,7 +1170,7 @@ function createCipherPanel(ns) {
 
   genBtn.onclick = () => {
     if (!selection.g0 || !selection.g1 || !selection.d0 || !selection.d1) {
-      alert("Choose a name for all 4 slots first (2 grid, 2 diamond) above.");
+      alert(t("alert_choose_4_slots"));
       return;
     }
     const seed = seedInput.value.trim();
@@ -878,7 +1186,7 @@ function createCipherPanel(ns) {
   };
 
   downloadBtn.onclick = () => {
-    if (!currentKey) { alert("Generate a key first."); return; }
+    if (!currentKey) { alert(t("alert_generate_key_first")); return; }
     const blob = new Blob([JSON.stringify(currentKey, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -889,12 +1197,11 @@ function createCipherPanel(ns) {
 
   clearBtn.onclick = () => {
     for (const slot of SLOT_ORDER) selection[slot] = null;
-    slotSummary.querySelectorAll(".slot-chip").forEach(c => c.classList.remove("filled"));
+    nextGrid = "g0"; nextDiamond = "d0";
     currentKey = null;
     keyStatus.classList.remove("ready");
-    keyStatus.textContent = "No key yet — choose 4 styles above.";
+    updateKeyStatusText();
     chartEl.innerHTML = "";
-    setActiveChip("g0");
     refreshUI();
     if (onClearCb) onClearCb();
   };
@@ -908,30 +1215,37 @@ function createCipherPanel(ns) {
     setChartClickHandler(fn) { chartClickHandler = fn; },
     onKeyReady(fn) { onKeyReadyCb = fn; },
     onClear(fn) { onClearCb = fn; },
+    // Called after a language switch: refresh anything holding
+    // language-dependent text that isn't just a static data-i18n sweep.
+    refreshLanguage() {
+      updateKeyStatusText();
+      if (currentKey) renderChart(currentKey, chartEl, chartClickHandler);
+    },
   };
 }
 
-const writeCipher = createCipherPanel("write");
-const readCipher = createCipherPanel("read");
+const cipher = createCipherPanel();
 
 // --- Write ---
 let lastWriteCoded = "";
 let lastWriteFull = "";
+let lastWriteMood = "";
+let lastWritePunct = "";
 
 document.getElementById("write-encodeBtn").onclick = () => {
-  const key = writeCipher.getKey();
-  if (!key) { alert("Choose all 4 styles first (Choose your cipher, above)."); return; }
+  const key = cipher.getKey();
+  if (!key) { alert(t("alert_choose_4_styles")); return; }
   const coded = encode(document.getElementById("write-plainText").value, key);
   lastWriteCoded = coded;
-  renderGlyphStream(coded.split(/\s+/).filter(Boolean), key, document.getElementById("write-encodeGlyphs"));
+  lastWriteMood = document.getElementById("write-moodInput").value.trim();
+  lastWritePunct = document.getElementById("write-punctInput").value.trim();
+  renderWriteResult(coded, lastWriteMood, lastWritePunct, key, document.getElementById("write-encodeGlyphs"));
 
   const slotA = godRefCode(key.grid9_gods[0], key.diamond4_gods[0]);
   const slotB = godRefCode(key.grid9_gods[1], key.diamond4_gods[1]);
-  const mood = document.getElementById("write-moodInput").value;
-  const punct = document.getElementById("write-punctInput").value;
-  const header = `${mood}_${slotA}_${slotB}_${key.seed}_${punct}`;
+  const header = `${lastWriteMood}_${slotA}_${slotB}_${key.seed}_${lastWritePunct}`;
   lastWriteFull = `${header}\n${coded}\n#`;
-  document.getElementById("write-headerLine").textContent = `Header → ${header}`;
+  document.getElementById("write-headerLine").textContent = t("header_line", { header });
   document.getElementById("write-fullTextOut").value = lastWriteFull;
 };
 
@@ -943,7 +1257,7 @@ wireCopy("write-copyFullBtn", () => lastWriteFull);
 let readDecodeSeq = [];
 
 function renderReadSequence() {
-  const key = readCipher.getKey();
+  const key = cipher.getKey();
   renderGlyphStream(readDecodeSeq, key, document.getElementById("read-sequenceStrip"), (i) => {
     readDecodeSeq.splice(i, 1);
     renderReadSequence();
@@ -951,18 +1265,20 @@ function renderReadSequence() {
   document.getElementById("read-plainOut").value = key ? decode(readDecodeSeq.join(" "), key) : "";
 }
 
-readCipher.setChartClickHandler((seg, which, pos) => {
+cipher.setChartClickHandler((seg, which, pos) => {
   readDecodeSeq.push(slotCode(seg, which, pos));
   renderReadSequence();
 });
-readCipher.onKeyReady(() => renderReadSequence());
-readCipher.onClear(() => { readDecodeSeq = []; renderReadSequence(); });
+cipher.onKeyReady(() => renderReadSequence());
+cipher.onClear(() => { readDecodeSeq = []; renderReadSequence(); });
 
 document.getElementById("read-spaceBtn").onclick = () => { readDecodeSeq.push("/"); renderReadSequence(); };
 document.getElementById("read-undoBtn").onclick = () => { readDecodeSeq.pop(); renderReadSequence(); };
 document.getElementById("read-clearSeqBtn").onclick = () => { readDecodeSeq = []; renderReadSequence(); };
 
 wireCopy("read-copyPlainBtn", () => document.getElementById("read-plainOut").value);
+
+let lastPasteMood = "", lastPasteVal = "";
 
 // --- Read: one paste box, header optional. If the first line parses as a
 // mood_slotA_slotB_seed_punctuation header, its own codes rebuild the key
@@ -971,7 +1287,7 @@ wireCopy("read-copyPlainBtn", () => document.getElementById("read-plainOut").val
 document.getElementById("read-pasteBtn").onclick = () => {
   const raw = document.getElementById("read-pasteIn").value;
   const lines = raw.split("\n").map(l => l.trim()).filter(l => l && l !== "#");
-  if (!lines.length) { alert("Paste a coded message first."); return; }
+  if (!lines.length) { alert(t("alert_paste_first")); return; }
 
   const headerParts = lines[0].split("_");
   let mood = "", slotA = "", slotB = "", seed = "", punct = "", key = null, body = "";
@@ -983,34 +1299,104 @@ document.getElementById("read-pasteBtn").onclick = () => {
     try {
       key = keyFromHeader(slotA, slotB, seed);
     } catch (e) {
-      document.getElementById("read-pasteOut").value = `Couldn't derive a key from that header: ${e.message}`;
+      document.getElementById("read-pasteOut").value = t("couldnt_derive_key", { msg: e.message });
       document.getElementById("read-pasteMoodPunct").textContent = "";
       return;
     }
     body = lines.slice(1).join(" ");
   } else {
-    key = readCipher.getKey();
+    key = cipher.getKey();
     if (!key) {
-      alert("No header found in that text, and no key chosen above — pick your 4 styles first, or paste a message that includes its own header.");
+      alert(t("alert_no_header_no_key"));
       return;
     }
     body = lines.join(" ");
   }
 
+  lastPasteMood = mood; lastPasteVal = punct;
   document.getElementById("read-pasteOut").value = decode(body, key);
   document.getElementById("read-pasteMoodPunct").textContent =
-    (mood || punct) ? `Mood: ${mood || "—"}   ·   Punctuation: ${punct || "—"}` : "";
+    (mood || punct) ? t("mood_punct_display", { mood: mood || "—", punct: punct || "—" }) : "";
 };
 
 wireCopy("read-copyPasteBtn", () => document.getElementById("read-pasteOut").value);
 
-// --- tabs ---
+// --- step-3 local tabs: Write / Read ---
 document.querySelectorAll(".tabbtn").forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll(".tabbtn").forEach(b => b.classList.toggle("active", b === btn));
     document.querySelectorAll(".tabpanel").forEach(p => p.classList.toggle("active", p.dataset.tab === btn.dataset.tab));
   };
 });
+
+// --- language toggle: sweeps every data-i18n* element, then asks the
+// cipher panel (and any currently-shown write/paste result) to refresh
+// whatever language-dependent text isn't covered by a static sweep. ---
+function applyLanguage(lang) {
+  currentLang = lang;
+  localStorage.setItem("godslies-lang", lang);
+  document.documentElement.lang = lang;
+
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.dataset.i18n;
+    if (STRINGS[lang][key] !== undefined) el.textContent = STRINGS[lang][key];
+  });
+  document.querySelectorAll("[data-i18n-html]").forEach(el => {
+    const key = el.dataset.i18nHtml;
+    if (STRINGS[lang][key] !== undefined) el.innerHTML = STRINGS[lang][key];
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+    const key = el.dataset.i18nPlaceholder;
+    if (STRINGS[lang][key] !== undefined) el.placeholder = STRINGS[lang][key];
+  });
+  document.querySelectorAll("[data-i18n-title]").forEach(el => {
+    const key = el.dataset.i18nTitle;
+    if (STRINGS[lang][key] !== undefined) el.title = STRINGS[lang][key];
+  });
+  // footer_text is deliberately English-only in both languages (see the fr
+  // STRINGS block) -- the sweep above skips it when the key is missing, so
+  // force it here rather than leaving a blank span on first fr load.
+  document.querySelector('[data-i18n="footer_text"]').textContent = STRINGS.en.footer_text;
+
+  const toggleBtn = document.getElementById("langToggleBtn");
+  toggleBtn.textContent = lang === "en" ? t("lang_switch_to_fr") : t("lang_switch_to_en");
+  updateThemeToggleLabel();
+
+  cipher.refreshLanguage();
+  renderReadSequence();
+  if (lastWriteCoded || lastWriteMood || lastWritePunct) {
+    renderWriteResult(lastWriteCoded, lastWriteMood, lastWritePunct, cipher.getKey(), document.getElementById("write-encodeGlyphs"));
+  }
+  if (lastPasteMood || lastPasteVal) {
+    document.getElementById("read-pasteMoodPunct").textContent = t("mood_punct_display", { mood: lastPasteMood || "—", punct: lastPasteVal || "—" });
+  }
+}
+
+document.getElementById("langToggleBtn").onclick = () => {
+  applyLanguage(currentLang === "en" ? "fr" : "en");
+};
+
+// --- theme toggle: manual override for the OS-level prefers-color-scheme
+// default, stored the same way the language choice is. The head script
+// above already applies any saved choice before first paint. ---
+function effectiveTheme() {
+  const explicit = document.documentElement.getAttribute("data-theme");
+  if (explicit) return explicit;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+function updateThemeToggleLabel() {
+  const eff = effectiveTheme();
+  document.getElementById("themeToggleBtn").textContent =
+    eff === "dark" ? t("theme_switch_to_light") : t("theme_switch_to_dark");
+}
+document.getElementById("themeToggleBtn").onclick = () => {
+  const next = effectiveTheme() === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  localStorage.setItem("godslies-theme", next);
+  updateThemeToggleLabel();
+};
+
+applyLanguage(currentLang);
 </script>
 </body>
 </html>

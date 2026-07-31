@@ -282,3 +282,13 @@ with everything else that was already there (26 individual tile crops,
 `CRYPTO.png`/`.txt`, the page-3 PNG export, 2 "Nouveau Image bitmap"
 files, and the un-trimmed 12-page PDF). Don't delete
 `archive/CRYPTO2.jpg` — `extract_assets.py` reads it directly.
+
+## Live demo
+
+https://nevro-pat.github.io/GodsLies/
+
+## License
+
+All rights reserved — see [`LICENSE`](LICENSE). The source is public for
+transparency, but no license is granted to reuse, modify, or redistribute
+it without permission.
