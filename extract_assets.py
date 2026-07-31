@@ -57,6 +57,18 @@ DIAMOND4_POS = ["N", "E", "S", "W"]
 PAD = 6  # trim a few px of the tile's own border so cell crops don't include stray border ink
 CANVAS = 160  # final square canvas size for every exported cell image
 
+# boost_small_content() targets -- diamond4 arms are typically a single
+# small dot/chevron (content-fill ~0.06-0.32 per manifest.json) next to
+# grid9's denser digit-like marks (~0.5-0.88), which reads as "diamonds
+# are too small/empty" even after clean_cell()'s own scaling (that scale
+# is relative to each cell's own crop region, not to other cells -- see
+# its docstring). Diamond gets a strong boost since it needs one; grid9
+# gets a mild one (mostly already full) -- both capped, not a full
+# re-normalization to one shared target, so a genuinely tiny mark (a
+# single dot) still reads as a dot, not a blown-up disc.
+GRID9_BOOST = (0.62, 1.3)      # (target_fill, max_boost)
+DIAMOND4_BOOST = (0.62, 3.2)
+
 # Hermès is the plain, undecorated "vanilla" pigpen style, and Áte (née
 # Dionysos) is its dotted variant (classic pigpen: corner/edge/center cell
 # shape + a dot). Unlike the other 12, these two must NOT go through the
@@ -239,6 +251,38 @@ def clean_cell(img: Image.Image, canvas: int = CANVAS) -> Image.Image:
     return final
 
 
+def boost_small_content(img: Image.Image, target_fill: float, max_boost: float, canvas: int = CANVAS) -> Image.Image:
+    """Boost a cell whose actual ink is small relative to the canvas
+    (diamond4 arms especially -- a dot or thin chevron, vs. grid9's
+    denser digit-like marks) toward a more consistent visual weight,
+    capped so it can't run away into an oversized blob -- same spirit as
+    godslies.html's client-side fillScale(), and the same failure mode
+    that ruled out a full, uncapped re-normalization here before (see
+    clean_cell()'s comment): capping the boost instead of forcing every
+    mark to hit the same target is what keeps a tiny dot looking like a
+    (bigger, but still clearly a) dot rather than a disc. Baked into the
+    asset -- unlike fillScale() -- so the composed tile PREVIEWS
+    (grid9_tile.png / diamond4_tile.png, used for gallery/slot-box
+    thumbnails) benefit too, not just the per-letter chart/write/read
+    display, which is the only thing fillScale ever touched."""
+    alpha = np.array(img)[:, :, 3]
+    ys, xs = np.nonzero(alpha)
+    if len(xs) == 0:
+        return img
+    fill = max(xs.max() - xs.min() + 1, ys.max() - ys.min() + 1) / canvas
+    if fill <= 0:
+        return img
+    boost = min(max_boost, max(1.0, target_fill / fill))
+    if boost <= 1.0:
+        return img
+    new_size = max(1, round(canvas * boost))
+    resized = img.resize((new_size, new_size), Image.LANCZOS)
+    final = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
+    off = (canvas - new_size) // 2
+    final.paste(resized, (off, off), resized)  # negative offset when boosted -- PIL clips it, i.e. center-crops back to `canvas`
+    return final
+
+
 def crop_grid9(tile: Image.Image) -> dict:
     w, h = tile.size
     cells = {}
@@ -247,7 +291,7 @@ def crop_grid9(tile: Image.Image) -> dict:
         for c in range(3):
             pos = r * 3 + c + 1
             box = (int(c * cw) + PAD, int(r * ch) + PAD, int((c + 1) * cw) - PAD, int((r + 1) * ch) - PAD)
-            cells[pos] = clean_cell(tile.crop(box))
+            cells[pos] = boost_small_content(clean_cell(tile.crop(box)), *GRID9_BOOST)
     return cells
 
 
@@ -286,7 +330,7 @@ def crop_grid9_bands(tile: Image.Image, row_bands: list, col_bands: list) -> dic
             pos = r * 3 + c + 1
             y0, y1 = row_bands[r]
             x0, x1 = col_bands[c]
-            cells[pos] = clean_cell(tile.crop((x0, y0, x1, y1)))
+            cells[pos] = boost_small_content(clean_cell(tile.crop((x0, y0, x1, y1))), *GRID9_BOOST)
     return cells
 
 
@@ -312,7 +356,7 @@ def crop_diamond4(tile: Image.Image) -> dict:
         ImageDraw.Draw(mask).polygon(poly, fill=255)
         masked = Image.new("RGBA", (w, h), (255, 255, 255, 0))
         masked.paste(tile, (0, 0), mask)
-        cells[direction] = clean_cell(masked.crop(bboxes[direction]))
+        cells[direction] = boost_small_content(clean_cell(masked.crop(bboxes[direction])), *DIAMOND4_BOOST)
     return cells
 
 
