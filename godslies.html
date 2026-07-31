@@ -152,12 +152,32 @@
   /* --- slot boxes: 4 independent boxes (grid.1, diamond.1, grid.2,
      diamond.2), each a pure display of the current selection for that
      one slot, filled by clicking gallery tiles below (grid/diamond
-     cycle independently). Sized to match .name-card .thumbs button
-     below exactly -- same box, same glyph size -- rather than being
-     their own smaller/nested design, so a slot preview and a gallery
-     thumbnail read as the same kind of object. --- */
-  .godblock-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
-  .slot-boxes { display: flex; gap: .6rem; flex-wrap: wrap; }
+     cycle independently). Sized to match the classic-pigpen preview
+     cards (.classic-col .thumbs, below) exactly -- same box, same
+     glyph size -- since those two are this page's two "reference
+     legend" readouts and should read as the same kind of object. The
+     other-gallery's 12 cards stay their own (smaller) size -- they're
+     a picker, not a legend. --- */
+  /* Column stack by default, row layout only once everything provably
+     fits on one line (see the min-width:1240px block below) -- flex-wrap
+     looked appealing but CSS decides a flex container's WIDTH before
+     wrapping happens, from an intrinsic-size formula that (across the
+     width range this row actually lives in) resolves to "fill available
+     space" regardless of how the wrapped lines end up using it -- so
+     whichever wrapped line was short still left a large, resize-dependent
+     trailing gap next to it, no matter what width/max-width was tried
+     here. Two explicit, fully-determined states (stacked vs. single row)
+     sidestep that: there's no in-between "wrapped but still too wide"
+     state for blank space to hide in. */
+  .godblock-row { display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 1.2rem; }
+  /* Grid, not flex-wrap: 4 fixed 116px boxes on plain flex-wrap could
+     split unevenly (3+1) at some widths, leaving blank space next to the
+     lone 4th box -- same ragged-wrap problem .other-gallery had, same
+     fix, scaled down to this box's 4 items (columns restricted to values
+     that evenly divide 4: 1, 2, or 4 -- never 3). */
+  .slot-boxes { display: grid; grid-template-columns: repeat(1, 116px); gap: .6rem; justify-content: center; }
+  @media (min-width: 380px) { .slot-boxes { grid-template-columns: repeat(2, 116px); } }
+  @media (min-width: 640px) { .slot-boxes { grid-template-columns: repeat(4, 116px); } }
   .slot-box-col { display: flex; flex-direction: column; align-items: center; gap: .35rem; }
   /* Icon-only: the god name and grid/diamond label used to be printed on
      every tile, which read as small and cluttered for what's meant to be
@@ -196,24 +216,36 @@
     min-height: 1em; font-family: ui-sans-serif, system-ui, sans-serif;
   }
   .slot-caption.duplicate { color: var(--accent); }
-  /* Only the separator should stretch to the row's full height (it's a
-     divider); everything else sizes to its own content -- align-items:
-     stretch on the row itself used to balloon the Clear button up to
-     match the classic-pigpen column's height, leaving it mostly empty. */
-  .godblock-row > .clear-selection-btn {
-    writing-mode: vertical-rl; align-self: stretch;
-    padding: .5rem .4rem; font-size: .78rem; letter-spacing: .03em;
-  }
+  /* Plain horizontal button + horizontal rule while .godblock-row is
+     column-stacked (a tall vertical-text sliver or a full-height divider
+     wouldn't make sense between two full-width blocks); the media query
+     below switches both to the compact vertical-text button and
+     full-height divider once the row becomes a single horizontal line,
+     at the same breakpoint .godblock-row itself switches at. */
+  .separator { width: min(320px, 90%); height: 2px; background: var(--border); }
 
-  .separator { width: 2px; align-self: stretch; background: var(--border); }
+  @media (min-width: 1240px) {
+    .godblock-row {
+      flex-direction: row;
+      width: fit-content; max-width: 1140px; margin-left: auto; margin-right: auto;
+    }
+    .godblock-row > .clear-selection-btn {
+      writing-mode: vertical-rl; align-self: stretch;
+      padding: .5rem .4rem; font-size: .78rem; letter-spacing: .03em;
+    }
+    .separator { width: 2px; height: auto; align-self: stretch; }
+  }
   /* Fixed-size, not flex:1 -- it used to fill whatever space its siblings
      left over, so its width (and card sizes) silently depended on how
      wide the Clear button's translated label happened to render. Always
      holds exactly 2 cards, so a fixed track size keeps it identical
-     regardless of language. margin-left:auto keeps it pinned to the
-     row's right edge (its intended position) whether it's sharing the
-     row with everything else or has wrapped onto its own line. */
-  .classic-col { flex: 0 0 auto; max-width: 100%; margin-left: auto; }
+     regardless of language. No margin-left:auto -- that used to pin it to
+     the row's right edge, but that meant a growing blank gap before it on
+     wide screens, and an even worse blank gap under the slot-boxes when it
+     wrapped onto its own line alone (auto-margin still pushed it right on
+     that line too). .godblock-row's own max-width+centering (above) is
+     what keeps the row looking intentional now, not a per-child pin. */
+  .classic-col { flex: 0 0 auto; max-width: 100%; }
   .classic-col .classic-label {
     font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
     color: var(--accent); margin-bottom: .6rem; font-family: ui-sans-serif, system-ui, sans-serif;
@@ -223,6 +255,17 @@
      grid's fixed tracks forcing horizontal overflow. */
   .classic-col .gallery { display: flex; flex-wrap: wrap; }
   .classic-col .gallery .name-card { flex: 0 0 auto; }
+  /* Match the selection boxes (.block-tile/.swatch, 116px/90px) exactly --
+     these 2 cards are this page's "reference legend" for the classic
+     pigpen and read as an undersized mismatch next to what they explain.
+     Scoped to just this gallery, not the shared .name-card rule below, so
+     the other 12-god gallery keeps its own (smaller) size. Full selector
+     path (not just ".classic-col .thumbs") needed for specificity -- the
+     generic ".name-card .thumbs button/img" rule below is equally
+     specific by class-count, and being later in the file would otherwise
+     win and silently override this. */
+  .classic-col .gallery .name-card .thumbs button { width: 116px; height: 116px; }
+  .classic-col .gallery .name-card .thumbs img { width: 90px; height: 90px; }
 
   /* --- gallery --- */
   .gallery {
@@ -429,9 +472,13 @@
     <div class="field-row" style="margin-top:.9rem;">
       <label style="margin:0;" data-i18n="encoded_result_label"></label>
       <button class="small secondary" id="write-copyGlyphsBtn" data-i18n="copy_codes_btn"></button>
+      <button class="small secondary" id="write-copyFontTextBtn" data-i18n="copy_font_text_btn"></button>
+      <button class="small secondary" id="write-copyImageBtn" data-i18n="copy_image_btn"></button>
+      <button class="small secondary" id="write-downloadImageBtn" data-i18n="download_image_btn"></button>
     </div>
     <div class="glyph-stream" id="write-encodeGlyphs"></div>
     <div class="header-line" id="write-headerLine"></div>
+    <p class="hint" data-i18n="font_text_hint"></p>
 
     <details>
       <summary data-i18n="show_text_summary"></summary>
@@ -589,6 +636,11 @@ const STRINGS = {
     encode_btn: "Encode",
     encoded_result_label: "Encoded result",
     copy_codes_btn: "📋 Copy as codes",
+    copy_font_text_btn: "🔒 Copy cipher text",
+    font_text_hint: "Paste into a document using your downloaded font — unreadable without it, even if copied elsewhere.",
+    copy_image_btn: "🖼 Copy image",
+    download_image_btn: "⬇ Download image",
+    copy_image_unsupported: "Not supported here — downloading instead",
     show_text_summary: "Show as text (header + codes — for pasting into Read, or anywhere else)",
     copy_btn: "📋 Copy",
 
@@ -679,6 +731,11 @@ const STRINGS = {
     encode_btn: "Chiffrer",
     encoded_result_label: "Résultat chiffré",
     copy_codes_btn: "📋 Copier en codes",
+    copy_font_text_btn: "🔒 Copier le texte chiffré",
+    font_text_hint: "Collez dans un document utilisant votre police téléchargée — illisible sans elle, même copié ailleurs.",
+    copy_image_btn: "🖼 Copier l'image",
+    download_image_btn: "⬇ Télécharger l'image",
+    copy_image_unsupported: "Non pris en charge ici — téléchargement à la place",
     show_text_summary: "Afficher en texte (en-tête + codes — à coller dans Lire, ou ailleurs)",
     copy_btn: "📋 Copier",
 
@@ -920,6 +977,29 @@ function encode(text, key) {
     else tokens.push(ch);
   }
   return tokens.join(" ");
+}
+
+// A downloaded font only changes how a letter DISPLAYS -- the character
+// actually stored is still the plain letter someone typed, so copying
+// cipher-looking text out of a font-applied document and pasting it
+// anywhere else (or "paste as plain text", or a screen reader) reveals
+// the real message instantly. This maps each letter to a Private Use Area
+// codepoint (U+E000-U+E019 for A-Z -- Unicode guarantees these are never
+// assigned a real character by any font/OS) instead of the letter itself,
+// so the font can still show the right cipher glyph (see buildFontFromKey
+// below, which maps both the plain letter AND its PUA codepoint to the
+// same glyph) while the text actually stored is meaningless outside that
+// specific font's cmap -- not readable by casual copy-paste, same
+// protection level as this app's own G3/D2 codes (needs the key, same as
+// always -- this isn't new cryptography, just a font-safe serialization
+// of the same already-encoded data instead of a plaintext-identity one).
+const PUA_BASE = 0xE000;
+function textToCipherFontText(text) {
+  let out = "";
+  for (const ch of foldForCipher(text)) {
+    out += /[a-zA-Z]/.test(ch) ? String.fromCodePoint(PUA_BASE + (ch.toUpperCase().charCodeAt(0) - 65)) : ch;
+  }
+  return out;
 }
 
 function decode(codeString, key) {
@@ -1167,6 +1247,134 @@ function glyphContoursFor(god, seg, pos) {
   return GLYPH_CONTOURS[`${god}/${seg}_${pos}`] || [];
 }
 
+// Draws one glyph straight from the baked vector contours (raw 160x160
+// pixel space, same y-down orientation a canvas already uses -- no flip
+// needed here, unlike contoursToFontPoints() above which flips for a
+// font's bottom-up baseline space). Deliberately never draws an <img> --
+// canvas getImageData()/toBlob()/toDataURL() all throw a SecurityError
+// once a file://-loaded image has touched the canvas (same constraint
+// documented on GLYPH_CONTOURS below), so the "copy/download as image"
+// feature (buildEncodedImageCanvas, below) has to stay pure vector paths
+// the whole way through, same as the font builder does.
+function drawGlyphPath(ctx, god, seg, pos, x, y, size) {
+  const contours = glyphContoursFor(god, seg, pos);
+  if (!contours.length) return;
+  const scale = size / FONT_CANVAS;
+  ctx.beginPath();
+  for (const flat of contours) {
+    for (let i = 0; i < flat.length; i += 2) {
+      const px = x + flat[i] * scale, py = y + flat[i + 1] * scale;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+  }
+  // evenodd, not the canvas default nonzero -- a glyph's contours can
+  // include both an outer and inner boundary for a ring/hole shape (e.g.
+  // Hermes' closed-box center cell), and evenodd is what makes the second
+  // contour subtract a hole instead of filling solid, independent of
+  // which way each contour happens to wind.
+  ctx.fill("evenodd");
+}
+
+const IMG_CELL = 64;
+const IMG_GAP = 8;
+const IMG_PAD = 14;
+const IMG_MAX_WIDTH = 900;
+const IMG_FONT = "600 20px ui-sans-serif, system-ui, sans-serif";
+
+// Renders the current encoded result (same tokens renderGlyphStream shows
+// on screen, same mood-first/punct-last order renderWriteResult uses) to
+// an offscreen canvas built entirely from vector paths and fillText -- no
+// <img>, so toBlob()/toDataURL() stay untainted (see drawGlyphPath above).
+// Used by both the "copy image" and "download image" buttons.
+function buildEncodedImageCanvas(coded, mood, punct, key) {
+  const tokens = coded.split(/\s+/).filter(Boolean);
+  const items = [];
+  if (mood) items.push({ type: "text", text: mood });
+  for (const tok of tokens) {
+    if (tok === "/") { items.push({ type: "space" }); continue; }
+    if (/^[GD]/i.test(tok) && tok.length >= 2) {
+      try {
+        const [seg, which, pos] = parseCode(tok);
+        items.push({ type: "glyph", god: nameFor(key, seg, which), seg, pos });
+        continue;
+      } catch { /* not actually a slot code -- fall through to literal */ }
+    }
+    items.push({ type: "text", text: tok });
+  }
+  if (punct) items.push({ type: "text", text: punct });
+
+  const measure = document.createElement("canvas").getContext("2d");
+  measure.font = IMG_FONT;
+  const cells = items.map(item => {
+    if (item.type === "glyph") return { ...item, w: IMG_CELL };
+    if (item.type === "space") return { ...item, w: IMG_CELL / 2 };
+    return { ...item, w: Math.max(IMG_CELL * 0.55, measure.measureText(item.text).width + 20) };
+  });
+
+  // wrap into rows the same way the on-screen flex-wrap glyph-stream
+  // does, just computed up front since a canvas can't reflow after draw
+  const rows = [[]];
+  let rowW = IMG_PAD;
+  for (const cell of cells) {
+    if (rows[rows.length - 1].length && rowW + cell.w + IMG_PAD > IMG_MAX_WIDTH) {
+      rows.push([]);
+      rowW = IMG_PAD;
+    }
+    rows[rows.length - 1].push(cell);
+    rowW += cell.w + IMG_GAP;
+  }
+
+  const rowWidths = rows.map(r => IMG_PAD * 2 + r.reduce((s, c) => s + c.w, 0) + IMG_GAP * Math.max(0, r.length - 1));
+  const canvasW = Math.max(...rowWidths, IMG_CELL + IMG_PAD * 2);
+  const canvasH = IMG_PAD * 2 + rows.length * IMG_CELL + IMG_GAP * (rows.length - 1);
+
+  // read the page's own current theme colors (light or dark, whichever is
+  // active) rather than hardcoding, so the exported image always matches
+  // what's on screen right now
+  const style = getComputedStyle(document.documentElement);
+  const colors = {
+    bg: style.getPropertyValue("--bg-card").trim(),
+    ink: style.getPropertyValue("--ink").trim(),
+    border: style.getPropertyValue("--border").trim(),
+    tag: style.getPropertyValue("--accent-soft").trim(),
+  };
+
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = colors.bg;
+  ctx.fillRect(0, 0, canvasW, canvasH);
+  ctx.font = IMG_FONT;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  let y = IMG_PAD;
+  for (const row of rows) {
+    let x = IMG_PAD;
+    for (const cell of row) {
+      if (cell.type === "glyph") {
+        ctx.strokeStyle = colors.border;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, y + 0.5, cell.w - 1, IMG_CELL - 1);
+        ctx.fillStyle = colors.ink;
+        const pad = cell.w * 0.08;
+        drawGlyphPath(ctx, cell.god, cell.seg, cell.pos, x + pad, y + pad, cell.w - pad * 2);
+      } else if (cell.type === "text") {
+        ctx.fillStyle = colors.tag;
+        ctx.fillRect(x, y, cell.w, IMG_CELL);
+        ctx.fillStyle = colors.ink;
+        ctx.fillText(cell.text, x + cell.w / 2, y + IMG_CELL / 2 + 1);
+      }
+      // "space" cells: nothing drawn, the gap alone reads as a word break
+      x += cell.w + IMG_GAP;
+    }
+    y += IMG_CELL + IMG_GAP;
+  }
+  return canvas;
+}
+
 // cmap format 4, one segment per mapped codepoint. Less compact than
 // merging consecutive codepoints that happen to share a constant
 // glyph-index delta into shared segments, but trivially correct for any
@@ -1403,6 +1611,7 @@ function buildFontFromKey(key, familyName) {
     advances.push([FONT_ADVANCE, g.xMin]);
     cmap.set(letter.charCodeAt(0), glyphIndex);
     cmap.set(letter.toLowerCase().charCodeAt(0), glyphIndex);
+    cmap.set(PUA_BASE + (letter.charCodeAt(0) - 65), glyphIndex); // see textToCipherFontText() above
     baseLetterGlyphId.set(letter, glyphIndex);
     baseLetterGlyphId.set(letter.toLowerCase(), glyphIndex);
     maxPoints = Math.max(maxPoints, g.numPoints);
@@ -1744,6 +1953,7 @@ let lastWriteCoded = "";
 let lastWriteFull = "";
 let lastWriteMood = "";
 let lastWritePunct = "";
+let lastWritePlainText = "";
 
 // Seed the plaintext/mood/punctuation fields with a random sample so
 // there's something to Encode right away -- each field clears itself
@@ -1766,7 +1976,8 @@ seedSampleField("write-punctInput", SAMPLE_PUNCT);
 document.getElementById("write-encodeBtn").onclick = () => {
   const key = cipher.getKey();
   if (!key) { alert(t("alert_choose_4_styles")); return; }
-  const coded = encode(document.getElementById("write-plainText").value, key);
+  lastWritePlainText = document.getElementById("write-plainText").value;
+  const coded = encode(lastWritePlainText, key);
   lastWriteCoded = coded;
   lastWriteMood = document.getElementById("write-moodInput").value.trim();
   lastWritePunct = document.getElementById("write-punctInput").value.trim();
@@ -1781,7 +1992,47 @@ document.getElementById("write-encodeBtn").onclick = () => {
 };
 
 wireCopy("write-copyGlyphsBtn", () => lastWriteCoded);
+wireCopy("write-copyFontTextBtn", () => textToCipherFontText(lastWritePlainText));
 wireCopy("write-copyFullBtn", () => lastWriteFull);
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function encodedImageFilename(key) { return `gods-lies-message-${key.seed}.png`; }
+
+document.getElementById("write-downloadImageBtn").onclick = () => {
+  const key = cipher.getKey();
+  if (!key || !lastWriteCoded) { alert(t("alert_generate_key_first")); return; }
+  buildEncodedImageCanvas(lastWriteCoded, lastWriteMood, lastWritePunct, key)
+    .toBlob(blob => downloadBlob(blob, encodedImageFilename(key)), "image/png");
+};
+
+// Best-effort clipboard image write -- navigator.clipboard.write with an
+// image ClipboardItem needs a secure context and (depending on browser/
+// permissions) can fail even when writeText works fine elsewhere on this
+// page, so this always falls back to the guaranteed download path on any
+// failure rather than leaving the click looking like it did nothing.
+document.getElementById("write-copyImageBtn").onclick = () => {
+  const key = cipher.getKey();
+  if (!key || !lastWriteCoded) { alert(t("alert_generate_key_first")); return; }
+  const btn = document.getElementById("write-copyImageBtn");
+  const original = btn.textContent;
+  buildEncodedImageCanvas(lastWriteCoded, lastWriteMood, lastWritePunct, key).toBlob(async blob => {
+    try {
+      if (!navigator.clipboard || !window.ClipboardItem) throw new Error("unsupported");
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      btn.textContent = t("copy_copied");
+    } catch {
+      btn.textContent = t("copy_image_unsupported");
+      downloadBlob(blob, encodedImageFilename(key));
+    }
+    setTimeout(() => { btn.textContent = original; }, 1600);
+  }, "image/png");
+};
 
 // --- Read: the alphabet chart above (in "Your key") is the click-to-build
 // decode surface -- clicking a symbol there appends it to the sequence. ---

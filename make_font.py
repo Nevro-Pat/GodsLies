@@ -58,6 +58,17 @@ SPACE_WIDTH = 500
 ASCENT = 900
 DESCENT = -200
 
+# Every letter also gets a second cmap entry at a Private Use Area
+# codepoint (Unicode guarantees U+E000-U+F8FF is never assigned a real
+# character by any font/OS), pointing at the same glyph as the plain
+# letter. A font only changes how a letter DISPLAYS, not what's actually
+# stored, so typed/copied plain text always round-trips back to the real
+# message the instant it's viewed without this font. Enciphering to these
+# PUA codepoints instead of plain letters (see godslies.html's matching
+# textToCipherFontText()/PUA_BASE) keeps the stored text meaningless
+# outside this specific font's cmap -- not readable by casual copy-paste.
+PUA_BASE = 0xE000
+
 
 def _simplify(points: np.ndarray, tolerance: float) -> np.ndarray:
     """Ramer-Douglas-Peucker. Marching squares emits one point per traced
@@ -208,6 +219,7 @@ def build_font(key: Key, family_name: str):
         glyph_order.append(glyph_name)
         cmap[ord(letter)] = glyph_name          # uppercase
         cmap[ord(letter.lower())] = glyph_name  # lowercase -> same glyph (cipher is case-insensitive)
+        cmap[PUA_BASE + (ord(letter) - 65)] = glyph_name  # paste-safe PUA alias, see PUA_BASE above
         base_letter_glyph[letter] = glyph_name
         base_letter_glyph[letter.lower()] = glyph_name
     cmap.update(accented_cmap_extra(base_letter_glyph))
