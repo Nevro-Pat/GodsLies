@@ -3,3 +3,4 @@ __pycache__/
 
 # Generated keys are private by design -- see README's "Keep these safe" note.
 keys/*.json
+preview_*.png

@@ -103,12 +103,76 @@ undersized glyphs toward a comfortable minimum on-screen size — capped,
 and never shrinking an already-large glyph — everywhere a single
 cell/arm image is shown (chart, write/read results).
 
+## Centred glyphs
+
+A cell image does two different jobs, and they want opposite things:
+
+- **On its own** — in the alphabet chart and the message stream — nothing
+  around it says where it sat in its tile, so it has to be centred or it
+  reads as crooked.
+- **As one ninth of a tile preview** — the gallery/slot thumbnails — its
+  offset inside its own cell is exactly what makes the nine cells compose
+  into a coherent drawing. Phántasos' outer-wall pigpen only closes into a
+  square because each mark stays pinned to its cell's edge.
+
+So `clean_cell()` takes a `center_ink` flag and `main()` builds both: the
+per-letter PNGs are centred on the **ink's own bounding box**, the tile
+previews keep every mark as drawn. Centring only the crop region — which is
+what it used to do — left 159 of 182 symbols visibly off-centre, and since
+the size boost above scales about the canvas centre, that offset was then
+multiplied by up to 3.2x: enough to push six diamond arms off the canvas
+and crop their ink away. Both are fixed (worst offset is now 1.4px, and the
+six recover their lost ink); centring is applied again after the boost,
+which otherwise re-introduces a few pixels of drift.
+
+## Known: duplicate symbols
+
+Centring has a consequence. A symbol can no longer be told apart by *where*
+it sits, and several names encoded a letter purely by position — Phántasos'
+cells 2 and 8 are the same horizontal bar, top vs bottom, likewise Árnesis
+and Limós. Others were already duplicates before any of this: Dólos and
+Kólax are drawn identically on 8 of their 9 cells, and Hermès'/Áte's
+diamond arms literally *are* Phántasos'/Lóchos' files (`DERIVE_DIAMOND4_FROM`).
+Since a key is 2 grid names + 2 diamond names and any pair is drawable, all
+182 glyphs need to be mutually distinct. **29 groups covering 69 glyphs were
+not; 21 groups remain.**
+
+`check_glyph_distinctness.py` reports them: it compares all 16,471 pairs
+after normalising position and size, tolerating stroke weight (a scan draws
+the same stroke a pixel fatter on one tile than another) and requiring the
+leftover difference to form a blob big enough to actually see. Run it after
+any change to the glyph pipeline. Its `ACCEPTED` list holds the few pairs a
+human has looked at and cleared — the same tolerance that lets it see past
+stroke weight also blurs a solid dot into a bar of similar extent.
+
+These are resolved **one name at a time**, each design rendered, looked at
+and approved before it lands in `GLYPH_MODIFIERS`. Kólax is done: it is now
+explicitly "Dólos dotted" on its grid — a dot in each corner cell, a crossbar
+through each edge cell, a ring at the centre — while Dólos keeps all nine of
+its own. Its diamond arms are untouched; the one arm that collides with
+Lóchos' cell 4 will be settled on Lóchos' side, since its arms already have
+to yield to Áte's.
+
+An earlier attempt solved all 40 at once by search and was rejected on sight,
+as were three redesigns after it — every numeric check passed each time. The
+missing step was looking: see `preview_glyphs.py`.
+
 ## Files
 
 - `extract_assets.py` — crop/build script. Re-run it if you replace
   `archive/CRYPTO2.jpg` with a new scan, or after editing any of its
   cropping/cleanup logic — it regenerates `assets/manifest.json`, which
   the browser fetches directly (see "Browser usage" below).
+- `check_glyph_distinctness.py` — verifies no two of the 182 glyphs read as
+  the same symbol (see "Known: duplicate symbols" above). Run it after
+  `extract_assets.py`; exits non-zero and lists the offending groups.
+- `preview_glyphs.py` — renders one name's glyphs to a PNG at the sizes the UI
+  actually uses, on the app's own background, optionally beside a reference
+  image, and prints a geometry audit (spacing, symmetry, stroke width).
+  `python preview_glyphs.py kolax`. Look at the image it writes before
+  judging a glyph change: four proposals were rejected on sight while every
+  numeric check passed, and low-resolution ASCII previews were worse than
+  useless — downsampling a 24px render closes a 1px gap.
 - `assets/<name>/grid9_<1-9>.png`, `diamond4_<N/E/S/W>.png` — the 182
   individual real cell images (black ink on transparent background, so
   the UI can invert them for dark mode), plus `grid9_tile.png` /
