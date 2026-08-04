@@ -1,0 +1,15 @@
+{
+  "CLASSIC_GODS": [["hermes", "Hermès"], ["ate", "Áte"]],
+  "OTHER_GODS": [
+    ["horkos", "Hórkos"], ["arnesis", "Árnesis"], ["phantasos", "Phántasos"], ["dolos", "Dólos"],
+    ["apate", "Apáte"], ["kolax", "Kólax"],
+    ["lethe", "Léthe"], ["limos", "Limós"], ["lochos", "Lóchos"],
+    ["daidalos", "Daídalos"], ["mnemon", "Mnémon"], ["loxias", "Loxías"]
+  ],
+  "GOD_CODES": {
+    "hermes": ["10","11"], "ate": ["20","22"], "kolax": ["30","33"], "loxias": ["40","44"],
+    "apate": ["50","55"], "mnemon": ["60","66"], "dolos": ["70","77"], "daidalos": ["80","88"],
+    "phantasos": ["90","99"], "lochos": ["15","51"], "arnesis": ["25","52"], "limos": ["35","53"],
+    "horkos": ["45","54"], "lethe": ["65","56"]
+  }
+}

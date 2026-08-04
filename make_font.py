@@ -128,15 +128,14 @@ def trace_polygons(png_path: Path):
 def bake_all_contours() -> dict:
     """Every glyph's traced+simplified polygon, in raw 160x160-canvas
     pixel coordinates as flat [x,y,x,y,...] lists -- keyed exactly like
-    the FILL_MANIFEST block already baked into godslies.html
-    (<god>/<seg>_<pos>). This is what lets the browser's own "Download
-    font" button build a .ttf without re-tracing images at runtime:
-    canvas getImageData() throws a SecurityError on file://-loaded
-    images (every browser's cross-origin image policy treats file://
-    resources this way, confirmed against this exact page), so runtime
-    tracing in the browser simply isn't possible in the fully-offline
-    mode this tool is built for -- the trace has to happen here, ahead
-    of time, same as FILL_MANIFEST's fill-fraction data does."""
+    assets/manifest.json (<god>/<seg>_<pos>). This is what lets the
+    browser's own "Download font" button build a .ttf without re-tracing
+    images at runtime: canvas getImageData() throws a SecurityError on
+    cross-origin-loaded images (e.g. this page's own assets when opened
+    over file://, confirmed against this exact page), so runtime tracing
+    in the browser isn't reliably possible -- the trace has to happen
+    here, ahead of time, same as manifest.json's fill-fraction data
+    does."""
     data = {}
     for god in GODS:
         for seg, positions in (("grid9", GRID9_POSITIONS), ("diamond4", DIAMOND4_POSITIONS)):
@@ -149,19 +148,12 @@ def bake_all_contours() -> dict:
     return data
 
 
-def update_html_glyph_contours(data: dict) -> None:
-    """Bakes bake_all_contours()'s output into godslies.html the same
-    way extract_assets.py's update_html_manifest() bakes FILL_MANIFEST
-    -- a marked, regenerate-in-place block, not hand-maintained."""
-    html_path = ROOT / "godslies.html"
-    text = html_path.read_text(encoding="utf-8")
-    start = "const GLYPH_CONTOURS = "
-    end = ";\n// END GENERATED GLYPH_CONTOURS"
-    start_idx = text.index(start) + len(start)
-    end_idx = text.index(end, start_idx)
-    new_json = json.dumps(data, sort_keys=True, separators=(",", ":"))
-    text = text[:start_idx] + new_json + text[end_idx:]
-    html_path.write_text(text, encoding="utf-8")
+def write_glyph_contours_json(data: dict) -> None:
+    """Writes bake_all_contours()'s output to assets/glyph-contours.json,
+    fetched by the browser at runtime (see js/data-loader.js) -- not
+    hand-maintained, regenerated here every time this runs."""
+    out_path = ROOT / "assets" / "glyph-contours.json"
+    out_path.write_text(json.dumps(data, sort_keys=True, separators=(",", ":")), encoding="utf-8")
 
 
 def build_glyph(polys, canvas_size):
@@ -249,15 +241,15 @@ def main(argv=None):
     p.add_argument("-o", "--out", help="output .ttf path (default: <key file name>.ttf next to the key)")
     p.add_argument("--name", help="font family name shown in apps (default: 'Gods Lies - <key file name>')")
     p.add_argument("--bake-html", action="store_true",
-                    help="regenerate godslies.html's baked GLYPH_CONTOURS block instead of "
-                         "building a font -- run this after extract_assets.py whenever the "
-                         "source scan or glyph-cleanup logic changes, so the browser's own "
-                         "'Download font' button stays in sync with the real assets")
+                    help="regenerate assets/glyph-contours.json instead of building a font -- "
+                         "run this after extract_assets.py whenever the source scan or "
+                         "glyph-cleanup logic changes, so the browser's own 'Download font' "
+                         "button stays in sync with the real assets")
     args = p.parse_args(argv)
 
     if args.bake_html:
-        update_html_glyph_contours(bake_all_contours())
-        print("Baked GLYPH_CONTOURS -> godslies.html")
+        write_glyph_contours_json(bake_all_contours())
+        print("Wrote assets/glyph-contours.json")
         return
 
     if not args.key:

@@ -1,0 +1,92 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f4ecdc;
+  --bg-card: #fbf6ea;
+  --ink: #2b2320;
+  --ink-soft: #6b5d4f;
+  --border: #d8c9a8;
+  --accent: #a8621f;
+  --accent-soft: #e8d4b0;
+  --shadow: 0 1px 3px rgba(60, 40, 10, .08), 0 1px 2px rgba(60, 40, 10, .1);
+  --radius: 12px;
+  --glyph-filter: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #201a14;
+    --bg-card: #2a2219;
+    --ink: #ecdfc8;
+    --ink-soft: #b3a189;
+    --border: #4a3f30;
+    --accent: #d99a4e;
+    --accent-soft: #4a3a22;
+    --shadow: 0 1px 3px rgba(0, 0, 0, .3), 0 1px 2px rgba(0, 0, 0, .35);
+    --glyph-filter: invert(1) sepia(.15);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #201a14; --bg-card: #2a2219; --ink: #ecdfc8; --ink-soft: #b3a189;
+  --border: #4a3f30; --accent: #d99a4e; --accent-soft: #4a3a22;
+  --shadow: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.35);
+  --glyph-filter: invert(1) sepia(.15);
+}
+:root[data-theme="light"] {
+  --bg: #f4ecdc; --bg-card: #fbf6ea; --ink: #2b2320; --ink-soft: #6b5d4f;
+  --border: #d8c9a8; --accent: #a8621f; --accent-soft: #e8d4b0;
+  --shadow: 0 1px 3px rgba(60,40,10,.08), 0 1px 2px rgba(60,40,10,.1);
+  --glyph-filter: none;
+}
+
+* { box-sizing: border-box; }
+body {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  background: var(--bg); color: var(--ink);
+  margin: 0; padding: 2.2rem 1.4rem 4rem;
+  line-height: 1.5;
+}
+/* --- width: the app used to sit in one fixed 1080px column everywhere,
+   which reads as small/static on a wide monitor. Ordinary prose/cards
+   stay in a fluid but capped column (.page-wrap); the god-picking tools
+   section (.tools-card) is allowed to breathe wider since it's a tile
+   grid that benefits from more columns, not a paragraph. Neither goes
+   truly edge-to-edge -- that broke line-length/readability. --- */
+.page-wrap { max-width: clamp(1080px, 82vw, 1440px); margin: 0 auto; }
+.tools-card { max-width: min(94vw, 1600px); margin: 0 auto 1.4rem; }
+
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+h1 {
+  font-size: 2.1rem; margin: 0 0 .15rem; letter-spacing: .01em;
+  font-variant: small-caps;
+}
+.tagline { color: var(--ink-soft); margin: 0 0 1.4rem; font-size: 1.02rem; max-width: 62ch; }
+h2 { font-size: 1.15rem; margin: 0 0 .3rem; font-variant: small-caps; letter-spacing: .02em; }
+.hint { color: var(--ink-soft); font-size: .88rem; margin: 0 0 1rem; }
+code, .mono { font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace; }
+
+section.card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1.4rem 1.5rem; margin-bottom: 1.4rem; box-shadow: var(--shadow);
+}
+.step-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--accent);
+  color: #fff8ec; font-size: .82rem; font-weight: 700; margin-right: .5rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+footer { text-align: center; color: var(--ink-soft); font-size: .8rem; margin-top: 2.5rem; }
+.footer-tagline { margin: 0 0 1.2rem; }
+.footer-info {
+  max-width: 640px; margin: 0 auto 1.2rem; text-align: left;
+  border-top: 1px solid var(--border); padding-top: 1rem;
+}
+.footer-info details { margin-bottom: .5rem; }
+.footer-info summary {
+  cursor: pointer; color: var(--ink); font-weight: 600; font-size: .82rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+.footer-info p { margin: .5rem 0 0; line-height: 1.55; }
+.footer-info a, .footer-links a { color: var(--accent); }
+.footer-links { margin: 0; }
+.footer-links a { color: var(--ink-soft); text-decoration: underline; }
+.footer-links span { margin: 0 .4rem; }

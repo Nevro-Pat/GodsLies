@@ -493,24 +493,6 @@ def main():
             print(f"{god}: {len(grid_cells)} grid9 cells, diamond4 tile {diamond_tile.size}")
 
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True))
-    update_html_manifest(manifest)
-
-
-def update_html_manifest(manifest: dict) -> None:
-    """godslies.html is opened directly as a file:// page (no server), and
-    fetch()/XHR of a local JSON file is unreliable under that origin in
-    Chrome -- so instead of loading assets/manifest.json at runtime, bake
-    the same data into a marked-off `const FILL_MANIFEST = {...}` block in
-    the HTML itself, regenerated here every time this script runs."""
-    html_path = ROOT / "godslies.html"
-    text = html_path.read_text(encoding="utf-8")
-    start = "const FILL_MANIFEST = "
-    end = ";\n// END GENERATED"
-    start_idx = text.index(start) + len(start)
-    end_idx = text.index(end, start_idx)
-    new_json = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
-    text = text[:start_idx] + new_json + text[end_idx:]
-    html_path.write_text(text, encoding="utf-8")
 
 
 if __name__ == "__main__":

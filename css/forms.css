@@ -1,0 +1,82 @@
+label { display: block; margin: .5rem 0 .25rem; font-size: .85rem; color: var(--ink-soft); }
+input[type=text], textarea {
+  width: 100%; box-sizing: border-box; padding: .55rem .7rem; font-size: .98rem;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+  color: var(--ink); font-family: inherit;
+}
+input[type=text]:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+textarea { min-height: 4rem; font-family: inherit; resize: vertical; }
+textarea.mono { font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace; }
+
+button {
+  font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 600; font-size: .9rem;
+  padding: .55rem 1.1rem; margin: .3rem .4rem 0 0; cursor: pointer;
+  border: 1px solid var(--accent); border-radius: 8px;
+  background: var(--accent); color: #fff8ec;
+  transition: filter .12s ease, transform .05s ease;
+}
+button:hover { filter: brightness(1.08); }
+button:active { transform: translateY(1px); }
+button.secondary { background: transparent; color: var(--ink); border-color: var(--border); }
+button.secondary:hover { background: var(--accent-soft); }
+button.small { font-size: .78rem; padding: .3rem .6rem; }
+.header-controls { display: flex; gap: .5rem; flex-wrap: wrap; }
+.lang-toggle, .theme-toggle { margin-top: 0; white-space: nowrap; }
+details > summary { cursor: pointer; color: var(--ink-soft); font-size: .85rem; margin: .6rem 0; }
+details[open] > summary { margin-bottom: .9rem; }
+
+.row { display: flex; gap: .8rem; flex-wrap: wrap; }
+.row > div { flex: 1; min-width: 170px; }
+
+.field-row { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin: .6rem 0 .3rem; flex-wrap: wrap; }
+.field-row label { margin: 0; }
+.header-line { font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace; font-size: .85rem; color: var(--ink-soft); margin-top: .5rem; word-break: break-all; }
+/* Plain-language reading of the header line above it -- which gods, which
+   half of each, and the seed -- so nothing about the key needs a lookup
+   in the code table to understand. */
+.header-summary { font-size: .82rem; color: var(--ink-soft); margin-top: .2rem; }
+/* The mood/punctuation envelope, shown identically under the Write result
+   and under a decoded pasted message. Always rendered once there's a
+   result (an unset field reads "—") so it can never look like the tags
+   silently vanished. */
+.tag-row {
+  display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; align-items: baseline;
+  margin-top: .5rem; font-size: .82rem; color: var(--ink-soft);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+.tag-row .tag-label { text-transform: uppercase; letter-spacing: .04em; font-size: .68rem; }
+.tag-row .tag-value { color: var(--accent); font-weight: 700; margin-left: .35rem; }
+.tag-row .tag-value.empty { color: var(--ink-soft); font-weight: 400; }
+
+/* Every symbol image is black ink on transparency, so dark mode has to
+   invert them all. Covers the tile previews by their containers (they
+   carry no class of their own) -- this used to name an `img.tile-preview`
+   class that no longer exists, which left all 32 tile previews rendering
+   black-on-dark, i.e. nearly invisible, in dark mode. */
+img.glyph, .swatch img, .thumbs img { filter: var(--glyph-filter); }
+
+.key-status {
+  display: block; font-size: .9rem; color: var(--ink-soft); margin-top: .6rem;
+  padding: .6rem .8rem; background: var(--bg); border-radius: 6px; border: 1px dashed var(--border);
+}
+.key-status.ready { color: var(--ink); border-style: solid; border-color: var(--accent-soft); }
+.key-status-title {
+  font-weight: 700; color: var(--accent); margin-bottom: .4rem; text-transform: uppercase;
+  letter-spacing: .04em; font-size: .78rem; font-family: ui-sans-serif, system-ui, sans-serif;
+}
+.key-status-rows { display: flex; flex-direction: column; gap: .2rem; }
+.key-status-row { display: flex; gap: .6rem; align-items: baseline; }
+.key-status-label {
+  min-width: 4.5rem; color: var(--ink-soft); text-transform: uppercase; font-size: .68rem;
+  letter-spacing: .04em; font-family: ui-sans-serif, system-ui, sans-serif;
+}
+.key-status-value { font-weight: 600; color: var(--ink); }
+
+/* Drop zone / file picker for decoding a message image (see
+   decodeImageToTokens) -- doubles as a click target and a drag target. */
+.image-drop {
+  border: 2px dashed var(--border); border-radius: 10px; padding: 1.4rem 1rem;
+  text-align: center; color: var(--ink-soft); cursor: pointer; font-size: .88rem;
+  transition: border-color .12s ease, background .12s ease;
+}
+.image-drop:hover, .image-drop.dragover { border-color: var(--accent); background: var(--accent-soft); }

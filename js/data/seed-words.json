@@ -1,0 +1,20 @@
+{
+  "SEED_WORDS": [
+    "Poutine", "Bagel", "Croissant", "Waffle", "Pretzel", "Biscuit", "Noodle", "Pancake",
+    "Falafel", "Dumpling", "Mango", "Papaya", "Coconut", "Cherry", "Apricot", "Walnut",
+    "Otter", "Badger", "Raven", "Falcon", "Panther", "Heron", "Weasel", "Lynx",
+    "Cobra", "Sparrow", "Beetle", "Gecko", "Marmot", "Wombat", "Pelican", "Ferret",
+    "Amber", "Crimson", "Cobalt", "Emerald", "Ivory", "Onyx", "Saffron", "Violet",
+    "Lantern", "Compass", "Anchor", "Beacon", "Ember", "Harbor", "Meadow", "Thicket",
+    "Quartz", "Granite", "Cinder", "Frost", "Thunder", "Comet", "Nebula", "Zephyr",
+    "Oscar", "Mila", "Theo", "Nadia", "Felix", "Ines", "Hugo", "Lena",
+    "Marcel", "Odile", "Gaston", "Yvette", "Remy", "Colette", "Basil", "Rosalind",
+    "Willow", "Cedar", "Birch", "Hazel", "Fennel", "Clover", "Poppy", "Juniper"
+  ],
+  "SAMPLE_MESSAGES": [
+    "The gods are watching", "Trust no oracle", "Meet me at midnight",
+    "Your secret is safe with me", "Not everything is a lie",
+    "Hermes never tells the truth", "Find me in the shadows",
+    "Say nothing to Ate", "The lie was kinder than the truth"
+  ]
+}
